@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Y'eFOOTBALL - 1v1 Stake Arena</title>
+
+  <!-- Supabase CDN JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -148,7 +151,7 @@
 
       <div class="card">
         <h2>🔥 Live Matches</h2>
-        <div id="matchList">Loading matches...</div>
+        <div id="matchList">Loading live matches...</div>
       </div>
     </div>
 
@@ -214,6 +217,7 @@
           <label>Your Score:</label>
           <input type="number" placeholder="3" min="0" required>
           <label>Opponent Score:</label>
+
           <input type="number" placeholder="1" min="0" required>
           <button type="submit" class="primary-btn" style="background: #f59e0b;">Submit Result</button>
         </form>
@@ -248,15 +252,13 @@
   </a>
 
   <script>
+    // Supabase Credentials
+    const SUPABASE_URL = "https://aahilmlffefvhylyvswc.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaGlsbWxmZmVmdmh5bHl2c3djIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0MTMyNDMsImV4cCI6MjA1NTk4OTI0M30.KlhFBy90R03yJ3Q4vHOnGvAkywV2Xp-T4O1fDIn9iOQ";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     const ADMIN_PIN = "3029";
     let currentUser = null;
-
-    function getLocalUsers() {
-      return JSON.parse(localStorage.getItem('ye_users') || '{}');
-    }
-    function saveLocalUsers(users) {
-      localStorage.setItem('ye_users', JSON.stringify(users));
-    }
 
     function toggleAuth(type) {
       if(type === 'login') {
@@ -272,41 +274,51 @@
       }
     }
 
-    // Direct Register System
-    document.getElementById('registerForm').addEventListener('submit', function(e) {
+    // Global Cloud Register
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const name = document.getElementById('regName').value.trim();
       const ownerId = document.getElementById('regOwnerId').value.trim();
       const phone = document.getElementById('regPhone').value.trim();
       const pass = document.getElementById('regPass').value.trim();
 
-      const users = getLocalUsers();
-      users[phone] = { name, ownerId, phone, pass, balance: 0 };
-      saveLocalUsers(users);
+      const { data, error } = await _supabase.from('users').insert([
+        { phone, name, owner_id: ownerId, pass, balance: 0 }
+      ]);
 
-      alert("Registration Successful! Aba Login garnuhos.");
-      toggleAuth('login');
-      document.getElementById('loginPhone').value = phone;
+      if (error) {
+        alert("Account creation failed! Phone number might already exist.");
+      } else {
+        alert("Registration Successful! Please Login.");
+        toggleAuth('login');
+        document.getElementById('loginPhone').value = phone;
+      }
     });
 
-    // Direct Login System
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
+    // Global Cloud Login
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const phone = document.getElementById('loginPhone').value.trim();
       const pass = document.getElementById('loginPass').value.trim();
 
-      const users = getLocalUsers();
-      const user = users[phone];
+      const { data, error } = await _supabase
+        .from('users')
+        .select('*')
+        .eq('phone', phone)
+        .eq('pass', pass)
+        .single();
 
-      if (user && user.pass === pass) {
-        currentUser = user;
+      if (data) {
+        currentUser = data;
         document.getElementById('authScreen').style.display = 'none';
         document.getElementById('mainDashboard').style.display = 'block';
-        document.getElementById('displayPlayerName').innerText = currentUser.name + " (" + currentUser.ownerId + ")";
+        document.getElementById('displayPlayerName').innerText = currentUser.name + " (" + currentUser.owner_id + ")";
         document.getElementById('userBalance').innerText = currentUser.balance || 0;
+        
         loadMatches();
+        subscribeRealtime();
       } else {
-        alert("Invalid Mobile Number or Password! Pehle Register garnuhos.");
+        alert("Invalid Mobile Number or Password!");
       }
     });
 
@@ -343,159 +355,129 @@
       document.getElementById('winnerPrize').innerText = `Rs. ${prize.toFixed(1)}`;
     }
 
-    // Submit Deposit (Min Rs. 25, Rs. 2 Margin Deducted)
-    document.getElementById('depositForm').addEventListener('submit', function(e) {
+    // Submit Cloud Deposit
+    document.getElementById('depositForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const amount = parseFloat(document.getElementById('depAmount').value);
       const ref = document.getElementById('depRef').value;
 
-      if(amount < 25) {
-        alert("Minimum Deposit amount is Rs. 25!");
-        return;
+      if(amount < 25) { alert("Minimum Deposit amount is Rs. 25!"); return; }
+
+      const { error } = await _supabase.from('deposits').insert([
+        { user_phone: currentUser.phone, user_name: currentUser.name, amount, ref, status: 'pending' }
+      ]);
+
+      if(!error) {
+        alert("Deposit Request Submitted to Admin Cloud!");
+        this.reset();
+      } else {
+        alert("Deposit request failed. Try again!");
       }
-
-      let deposits = JSON.parse(localStorage.getItem('ye_deposits') || '[]');
-      deposits.push({
-        id: Date.now(),
-        userPhone: currentUser.phone,
-        userName: currentUser.name,
-        amount: amount,
-        ref: ref,
-        status: 'pending'
-      });
-      localStorage.setItem('ye_deposits', JSON.stringify(deposits));
-
-      alert("Deposit Request Submitted! Rs. 2 margin deduct garera balance add hunchha.");
-      this.reset();
     });
 
-    // Submit Withdraw (Min Rs. 75)
-    document.getElementById('withdrawForm').addEventListener('submit', function(e) {
+    // Submit Cloud Withdraw
+    document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const method = document.getElementById('witMethod').value;
       const number = document.getElementById('witNumber').value;
       const name = document.getElementById('witName').value;
       const amount = parseFloat(document.getElementById('witAmount').value);
 
-      if(amount < 75) {
-        alert("Minimum Withdrawal Amount Rs. 75 ho!");
-        return;
+      if(amount < 75) { alert("Minimum Withdrawal Amount Rs. 75 ho!"); return; }
+      if(currentUser.balance < amount) { alert("Insufficient Balance!"); return; }
+
+      const { error } = await _supabase.from('withdrawals').insert([
+        { user_phone: currentUser.phone, user_name: currentUser.name, method, number, acc_name: name, amount, status: 'pending' }
+      ]);
+
+      if(!error) {
+        const newBal = currentUser.balance - amount;
+        await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
+        currentUser.balance = newBal;
+        document.getElementById('userBalance').innerText = newBal;
+
+        alert("Withdrawal Request Submitted!");
+        this.reset();
       }
-
-      if(currentUser.balance < amount) {
-        alert("Tapaiko Wallet ma paryaapta Balance chhaina!");
-        return;
-      }
-
-      let withdrawals = JSON.parse(localStorage.getItem('ye_withdrawals') || '[]');
-      withdrawals.push({
-        id: Date.now(),
-        userPhone: currentUser.phone,
-        userName: currentUser.name,
-        method: method,
-        number: number,
-        accName: name,
-        amount: amount,
-        status: 'pending'
-      });
-      localStorage.setItem('ye_withdrawals', JSON.stringify(withdrawals));
-
-      // Cut balance instantly upon request
-      let users = getLocalUsers();
-      users[currentUser.phone].balance -= amount;
-      saveLocalUsers(users);
-      currentUser.balance -= amount;
-      document.getElementById('userBalance').innerText = currentUser.balance;
-
-      alert("Withdrawal Request Submitted Successfully!");
-      this.reset();
     });
 
-    // Create Match
-    document.getElementById('createMatchForm').addEventListener('submit', function(e) {
+    // Create Match Challenge
+    document.getElementById('createMatchForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const fee = parseFloat(document.getElementById('entryFee').value);
       const code = document.getElementById('roomCode').value;
 
-      let matches = JSON.parse(localStorage.getItem('ye_matches') || '[]');
-      matches.push({
-        id: Date.now(),
-        hostName: currentUser.name,
-        hostOwnerId: currentUser.ownerId,
-        entryFee: fee,
-        roomCode: code,
-        status: 'open'
-      });
-      localStorage.setItem('ye_matches', JSON.stringify(matches));
+      const { error } = await _supabase.from('matches').insert([
+        { host_name: currentUser.name, host_owner_id: currentUser.owner_id, entry_fee: fee, room_code: code, status: 'open' }
+      ]);
 
-      alert("Match Challenge Published!");
-      this.reset();
-      loadMatches();
+      if(!error) {
+        alert("Match Published to Global Arena!");
+        this.reset();
+        loadMatches();
+      }
     });
 
-    function loadMatches() {
-      const matches = JSON.parse(localStorage.getItem('ye_matches') || '[]');
+    // Load Live Matches Across All Devices
+    async function loadMatches() {
+      const { data: matches, error } = await _supabase.from('matches').select('*').eq('status', 'open');
       const container = document.getElementById('matchList');
       container.innerHTML = '';
 
-      if(matches.length === 0) { container.innerHTML = 'No active matches.'; return; }
+      if(!matches || matches.length === 0) { container.innerHTML = 'No active matches.'; return; }
 
       matches.forEach(m => {
-        if(m.status === 'open') {
-          const prize = (m.entryFee * 2 * 0.9).toFixed(1);
-          container.innerHTML += `
-            <div class="match-item">
-              <div class="match-header">
-                <span>Host: ${m.hostName}</span>
-                <span style="color:#38bdf8;">Entry: Rs. ${m.entryFee}</span>
-              </div>
-              <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b></div>
-              <button class="join-btn" onclick="alert('Match Accepted! Room Code: ${m.roomCode}')">Accept Challenge</button>
+        const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
+        container.innerHTML += `
+          <div class="match-item">
+            <div class="match-header">
+              <span>Host: ${m.host_name}</span>
+              <span style="color:#38bdf8;">Entry: Rs. ${m.entry_fee}</span>
             </div>
-          `;
-        }
+            <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b></div>
+            <button class="join-btn" onclick="alert('Match Accepted! Room Code: ${m.room_code}')">Accept Challenge</button>
+          </div>
+        `;
       });
     }
 
-    // Load Admin Data (Deposits & Withdrawals)
-    function loadAdminData() {
-      // Load Deposits
-      const deposits = JSON.parse(localStorage.getItem('ye_deposits') || '[]');
+    // Load Admin Data Across All Devices
+    async function loadAdminData() {
+      // Pending Deposits
+      const { data: deposits } = await _supabase.from('deposits').select('*').eq('status', 'pending');
       const depContainer = document.getElementById('adminDepositList');
       depContainer.innerHTML = '';
 
-      const pendingDep = deposits.filter(d => d.status === 'pending');
-      if(pendingDep.length === 0) {
+      if(!deposits || deposits.length === 0) {
         depContainer.innerHTML = 'No pending deposits.';
       } else {
-        pendingDep.forEach(d => {
-          const addAmount = d.amount - 2; // Subtract Rs. 2 Margin
+        deposits.forEach(d => {
+          const addAmount = d.amount - 2;
           depContainer.innerHTML += `
             <div class="req-item">
-              <div><b>${d.userName}</b> (${d.userPhone})</div>
+              <div><b>${d.user_name}</b> (${d.user_phone})</div>
               <div>Sent: Rs. ${d.amount} | User gets: <b style="color:#22c55e;">Rs. ${addAmount}</b> (Margin: Rs.2)</div>
               <div>Ref Code: ${d.ref}</div>
-              <button class="primary-btn" style="padding: 6px; font-size: 12px; margin-top:6px;" onclick="approveDeposit(${d.id})">Approve Deposit</button>
+              <button class="primary-btn" style="padding: 6px; font-size: 12px; margin-top:6px;" onclick="approveDeposit(${d.id}, '${d.user_phone}', ${d.amount})">Approve Deposit</button>
             </div>
           `;
         });
       }
 
-      // Load Withdrawals
-      const withdrawals = JSON.parse(localStorage.getItem('ye_withdrawals') || '[]');
+      // Pending Withdrawals
+      const { data: withdrawals } = await _supabase.from('withdrawals').select('*').eq('status', 'pending');
       const witContainer = document.getElementById('adminWithdrawList');
       witContainer.innerHTML = '';
 
-      const pendingWit = withdrawals.filter(w => w.status === 'pending');
-      if(pendingWit.length === 0) {
+      if(!withdrawals || withdrawals.length === 0) {
         witContainer.innerHTML = 'No pending withdrawals.';
       } else {
-        pendingWit.forEach(w => {
+        withdrawals.forEach(w => {
           witContainer.innerHTML += `
             <div class="req-item" style="border-color:#ef4444;">
-              <div><b>${w.userName}</b> (${w.userPhone})</div>
+              <div><b>${w.user_name}</b> (${w.user_phone})</div>
               <div>Pay via: <b>${w.method}</b> | Num: <b>${w.number}</b></div>
-              <div>Name: ${w.accName} | Amount: <b style="color:#ef4444;">Rs. ${w.amount}</b></div>
+              <div>Name: ${w.acc_name} | Amount: <b style="color:#ef4444;">Rs. ${w.amount}</b></div>
               <button class="primary-btn" style="padding: 6px; font-size: 12px; margin-top:6px; background:#ef4444;" onclick="approveWithdraw(${w.id})">Mark as Paid</button>
             </div>
           `;
@@ -503,39 +485,41 @@
       }
     }
 
-    function approveDeposit(depId) {
-      let deposits = JSON.parse(localStorage.getItem('ye_deposits') || '[]');
-      const dep = deposits.find(d => d.id === depId);
-      if(dep) {
-        dep.status = 'approved';
-        localStorage.setItem('ye_deposits', JSON.stringify(deposits));
-        
-        const finalBalanceToAdd = dep.amount - 2; // Deduct Rs. 2 margin
-        let users = getLocalUsers();
-        if(users[dep.userPhone]) {
-          users[dep.userPhone].balance = (users[dep.userPhone].balance || 0) + finalBalanceToAdd;
-          saveLocalUsers(users);
-        }
+    async function approveDeposit(depId, userPhone, rawAmount) {
+      const netAmount = rawAmount - 2;
 
-        if(currentUser && currentUser.phone === dep.userPhone) {
-          currentUser.balance += finalBalanceToAdd;
+      // Fetch user current balance
+      const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
+      if(u) {
+        await _supabase.from('users').update({ balance: u.balance + netAmount }).eq('phone', userPhone);
+        await _supabase.from('deposits').update({ status: 'approved' }).eq('id', depId);
+
+        if(currentUser && currentUser.phone === userPhone) {
+          currentUser.balance += netAmount;
           document.getElementById('userBalance').innerText = currentUser.balance;
         }
 
-        alert(`Deposit Approved! User credited Rs. ${finalBalanceToAdd} (Rs. 2 profit taken).`);
+        alert(`Deposit Approved! User Credited Rs. ${netAmount}`);
         loadAdminData();
       }
     }
 
-    function approveWithdraw(witId) {
-      let withdrawals = JSON.parse(localStorage.getItem('ye_withdrawals') || '[]');
-      const wit = withdrawals.find(w => w.id === witId);
-      if(wit) {
-        wit.status = 'approved';
-        localStorage.setItem('ye_withdrawals', JSON.stringify(withdrawals));
-        alert("Withdrawal marked as Paid!");
-        loadAdminData();
-      }
+    async function approveWithdraw(witId) {
+      await _supabase.from('withdrawals').update({ status: 'approved' }).eq('id', witId);
+      alert("Withdrawal marked as Paid!");
+      loadAdminData();
+    }
+
+    // Realtime Auto Sync for Matches and Admin Data
+    function subscribeRealtime() {
+      _supabase.channel('schema-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+          loadMatches();
+          if(document.getElementById('admin').classList.contains('active')) {
+            loadAdminData();
+          }
+        })
+        .subscribe();
     }
   </script>
 </body>
