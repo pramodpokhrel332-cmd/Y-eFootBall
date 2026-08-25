@@ -3,36 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Match Lobby</title>
+  <title>Gaming Portal - Match Lobby</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-950 text-white min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-950 text-white min-h-screen flex flex-col items-center p-4">
 
-  <div class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-2xl">
+  <!-- NAVBAR / TOP HEADER (Login, Deposit, Withdraw, Wallet) -->
+  <header class="w-full max-w-xl bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6 flex justify-between items-center shadow-lg">
+    <div>
+      <h1 class="text-lg font-bold text-indigo-400">eSports Hub</h1>
+      <p class="text-xs text-gray-400">Balance: <span id="walletBal" class="text-green-400 font-bold">NRs. 500</span></p>
+    </div>
     
-    <!-- Header Area -->
+    <div class="flex gap-2">
+      <button onclick="handleDeposit()" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-xs font-bold rounded-lg transition">
+        Deposit
+      </button>
+      <button onclick="handleWithdraw()" class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-xs font-bold rounded-lg transition">
+        Withdraw
+      </button>
+      <button id="loginBtn" onclick="handleLogin()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold rounded-lg transition">
+        Login
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN MATCH LOBBY -->
+  <div class="w-full max-w-xl bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-2xl relative">
+    
+    <!-- Lobby Header & Host Request Icon -->
     <div class="flex items-center justify-between mb-6 border-b border-gray-800 pb-4">
-      <h2 class="text-xl font-bold text-indigo-400">Match Lobby</h2>
+      <div>
+        <h2 class="text-xl font-bold text-white">Match Lobby</h2>
+        <p class="text-xs text-gray-400">eFootball / FreeFire Custom Room</p>
+      </div>
       
       <!-- HOST ICON BUTTON -->
       <div class="relative">
         <button id="reqBtn" class="p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition shadow-lg flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
         </button>
 
-        <!-- Pop-up Box for Host -->
+        <!-- Pop-up Box for Host Requests -->
         <div id="popover" class="hidden absolute right-0 mt-3 w-80 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 p-4">
-          <h3 class="text-white font-bold mb-3 border-b border-gray-800 pb-2">Join Requests</h3>
+          <div class="flex justify-between items-center mb-3 border-b border-gray-800 pb-2">
+            <h3 class="text-white font-bold text-sm">Join Requests</h3>
+            <span class="text-xs text-indigo-400 font-semibold">(Host Controls)</span>
+          </div>
           <div id="requestList" class="space-y-3 max-h-60 overflow-y-auto"></div>
         </div>
       </div>
     </div>
 
-    <!-- PLAYER AREA -->
+    <!-- PLAYER SECTION -->
     <div class="space-y-4">
-      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <p class="text-xs text-gray-400">Room Status</p>
-        <p id="statusText" class="text-sm font-semibold text-gray-200">Waiting for Request</p>
+      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-center">
+        <div>
+          <p class="text-xs text-gray-400">Room Status</p>
+          <p id="statusText" class="text-sm font-semibold text-gray-200">Not Joined Yet</p>
+        </div>
+        <span class="text-xs bg-indigo-900/50 text-indigo-300 border border-indigo-700 px-2.5 py-1 rounded-full font-medium">Entry: NRs. 50</span>
       </div>
 
       <!-- Secret ID and Pass Reveal Container -->
@@ -49,11 +79,14 @@
   </div>
 
   <script>
+    let userBalance = 500;
+    let isLoggedIn = true;
     let requests = [
       { id: '1', name: 'Alex_Gamer', fee: 50 },
       { id: '2', name: 'Pro_Striker', fee: 50 }
     ];
 
+    const walletBal = document.getElementById('walletBal');
     const reqBtn = document.getElementById('reqBtn');
     const popover = document.getElementById('popover');
     const requestList = document.getElementById('requestList');
@@ -61,8 +94,45 @@
     const statusText = document.getElementById('statusText');
     const roomDetails = document.getElementById('roomDetails');
 
-    // Toggle Host Request Window
-    reqBtn.onclick = () => popover.classList.toggle('hidden');
+    // Deposit Logic
+    function handleDeposit() {
+      const amount = prompt("Enter deposit amount (NRs):");
+      if (amount && !isNaN(amount)) {
+        userBalance += parseFloat(amount);
+        walletBal.innerText = `NRs. ${userBalance}`;
+        alert(`Deposit successful! New Balance: NRs. ${userBalance}`);
+      }
+    }
+
+    // Withdraw Logic
+    function handleWithdraw() {
+      const amount = prompt("Enter withdraw amount (NRs):");
+      if (amount && !isNaN(amount)) {
+        if (parseFloat(amount) <= userBalance) {
+          userBalance -= parseFloat(amount);
+          walletBal.innerText = `NRs. ${userBalance}`;
+          alert(`Withdrawal processing! Remaining Balance: NRs. ${userBalance}`);
+        } else {
+          alert("Insufficient Balance!");
+        }
+      }
+    }
+
+    // Login Toggle
+    function handleLogin() {
+      isLoggedIn = !isLoggedIn;
+      document.getElementById('loginBtn').innerText = isLoggedIn ? "Logout" : "Login";
+      alert(isLoggedIn ? "Logged In Successfully" : "Logged Out");
+    }
+
+    // Toggle Host Request Menu
+    reqBtn.onclick = (e) => {
+      e.stopPropagation();
+      popover.classList.toggle('hidden');
+    };
+
+    document.onclick = () => popover.classList.add('hidden');
+    popover.onclick = (e) => e.stopPropagation();
 
     // Render Request List
     function renderRequests() {
@@ -77,35 +147,53 @@
             <p class="text-xs text-green-400 font-medium">Entry Fee: NRs. ${req.fee}</p>
           </div>
           <div class="flex gap-2">
-            <button onclick="approve('${req.id}')" class="p-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-bold">✓ Approve</button>
-            <button onclick="reject('${req.id}')" class="p-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-bold">✕ Reject</button>
+            <button onclick="approve('${req.id}', ${req.fee})" class="px-2.5 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-bold transition">✓ Accept</button>
+            <button onclick="reject('${req.id}')" class="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-bold transition">✕ Reject</button>
           </div>
         </div>
       `).join('');
     }
 
-    // Approve Action
-    window.approve = (id) => {
-      requests = requests.filter(r => r.id !== id);
-      renderRequests();
-      alert('Request Approved! Payment deducted & Credentials unlocked.');
-      statusText.innerText = "Request Approved!";
-      roomDetails.classList.remove('hidden');
+    // Host Accepts Request (Deducts Money ONLY now)
+    window.approve = (id, fee) => {
+      if(userBalance >= fee) {
+        userBalance -= fee;
+        walletBal.innerText = `NRs. ${userBalance}`;
+        requests = requests.filter(r => r.id !== id);
+        renderRequests();
+        
+        statusText.innerText = "Request Approved! Room Credentials Unlocked.";
+        statusText.className = "text-sm font-semibold text-green-400";
+        roomDetails.classList.remove('hidden');
+        alert('Approved! NRs. 50 Entry Fee deducted.');
+      } else {
+        alert("Player has insufficient wallet balance!");
+      }
     };
 
-    // Reject Action
+    // Host Rejects Request
     window.reject = (id) => {
       requests = requests.filter(r => r.id !== id);
       renderRequests();
-      alert('Request Rejected! No money deducted.');
+      statusText.innerText = "Request Rejected!";
+      statusText.className = "text-sm font-semibold text-red-400";
+      joinBtn.disabled = false;
+      joinBtn.innerText = "Send Join Request (NRs. 50)";
+      joinBtn.className = "w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition";
     };
 
-    // Send Join Request Action
+    // Send Join Request
     joinBtn.onclick = () => {
+      if(!isLoggedIn) return alert("Please Login First!");
+      
       joinBtn.innerText = "Request Sent (Pending Approval)";
       joinBtn.disabled = true;
       joinBtn.className = "w-full py-3 px-4 bg-yellow-600 text-white font-bold rounded-lg cursor-not-allowed";
       statusText.innerText = "Waiting for Host Approval...";
+      statusText.className = "text-sm font-semibold text-yellow-400";
+      
+      requests.push({ id: Date.now().toString(), name: 'You (Player)', fee: 50 });
+      renderRequests();
     };
 
     renderRequests();
