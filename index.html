@@ -1,66 +1,131 @@
-import React, { useState, useEffect } from 'react';
-import { UserCheck, Check, X, Bell } from 'lucide-react';
+import React, { useState } from 'react';
+import { UserCheck, Check, X, Send } from 'lucide-react';
 
-const HostRequestPanel = ({ roomId, requests, onApprove, onReject }) => {
+export default function GameRoom() {
+  // State for Manage Pending Requests
+  const [requests, setRequests] = useState([
+    { requestId: '1', userId: 'user_101', playerName: 'Alex_Gamer', entryFee: 50 },
+    { requestId: '2', userId: 'user_102', playerName: 'Pro_Striker', entryFee: 50 }
+  ]);
+
   const [isOpen, setIsOpen] = useState(false);
+  const [roomData, setRoomData] = useState({ roomId: '12345', password: '****' });
+  const [isJoined, setIsJoined] = useState(false);
+  const [requestStatus, setRequestStatus] = useState('IDLE'); // IDLE, PENDING, APPROVED
+
+  // Host Action: Approve Request (Payment Deducted Here)
+  const handleApprove = (requestId, userId) => {
+    // 1. Remove from Pending Requests
+    setRequests(requests.filter((req) => req.requestId !== requestId));
+    
+    // 2. Reveal ID & Pass to approved player logic
+    alert(`Request ${requestId} Approved! Payment deducted & Credentials sent.`);
+  };
+
+  // Host Action: Reject Request
+  const handleReject = (requestId) => {
+    setRequests(requests.filter((req) => req.requestId !== requestId));
+    alert(`Request ${requestId} Rejected! No payment deducted.`);
+  };
+
+  // Player Action: Send Request
+  const handleSendJoinRequest = () => {
+    setRequestStatus('PENDING');
+    alert("Request sent to Host! Money will deduct only after approval.");
+  };
 
   return (
-    <div className="relative inline-block">
-      {/* 1. Request Icon Button with Notification Badge */}
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition"
-      >
-        <UserCheck className="w-6 h-6" />
-        {requests.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
-            {requests.length}
-          </span>
-        )}
-      </button>
+    <div className="min-h-screen bg-gray-950 text-white p-6 flex flex-col items-center justify-center font-sans">
+      <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-2xl relative">
+        
+        {/* Header Section */}
+        <div className="flex items-center justify-between mb-6 border-b border-gray-800 pb-4">
+          <h2 className="text-xl font-bold text-indigo-400">Match Lobby</h2>
 
-      {/* 2. Pop-up Box to Accept/Approve or Reject */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 p-4">
-          <h3 className="text-white font-bold mb-3 flex items-center justify-between">
-            <span>Join Requests</span>
-            <span className="text-xs text-gray-400">{requests.length} Pending</span>
-          </h3>
+          {/* HOST SECTION: Request Icon */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsOpen(!isOpen)}
+              className="p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition flex items-center justify-center shadow-lg"
+              title="Join Requests"
+            >
+              <UserCheck className="w-6 h-6" />
+            </button>
 
-          <div className="space-y-3 max-h-60 overflow-y-auto">
-            {requests.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-2">No pending requests</p>
-            ) : (
-              requests.map((req) => (
-                <div key={req.requestId} className="flex items-center justify-between bg-gray-800 p-2 rounded-md">
-                  <div>
-                    <p className="text-sm font-semibold text-white">{req.playerName}</p>
-                    <p className="text-xs text-green-400">Entry Fee: NRs. {req.entryFee}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => onApprove(req.requestId, req.userId)}
-                      className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md"
-                      title="Approve & Deduct Payment"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => onReject(req.requestId)}
-                      className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md"
-                      title="Reject Request"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
+            {/* Host Request Pop-up Menu */}
+            {isOpen && (
+              <div className="absolute right-0 mt-3 w-80 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 p-4">
+                <h3 className="text-white font-bold mb-3 border-b border-gray-800 pb-2">
+                  Join Requests
+                </h3>
+
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {requests.length === 0 ? (
+                    <p className="text-gray-400 text-sm text-center py-2">No pending requests</p>
+                  ) : (
+                    requests.map((req) => (
+                      <div key={req.requestId} className="flex items-center justify-between bg-gray-800 p-3 rounded-lg border border-gray-700">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{req.playerName}</p>
+                          <p className="text-xs text-green-400 font-medium">Entry Fee: NRs. {req.entryFee}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleApprove(req.requestId, req.userId)}
+                            className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center justify-center transition"
+                            title="Approve & Deduct Payment"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleReject(req.requestId)}
+                            className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-md flex items-center justify-center transition"
+                            title="Reject Request"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              ))
+              </div>
             )}
           </div>
         </div>
-      )}
+
+        {/* PLAYER SECTION */}
+        <div className="space-y-4">
+          <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+            <p className="text-xs text-gray-400">Room Status</p>
+            <p className="text-sm font-semibold text-gray-200">
+              {requestStatus === 'APPROVED' ? "Room ID & Pass Unlocked" : "Waiting for Approval"}
+            </p>
+          </div>
+
+          {/* Reveal Credentials ONLY when Approved */}
+          {requestStatus === 'APPROVED' ? (
+            <div className="bg-green-950 border border-green-600 p-4 rounded-lg space-y-1">
+              <p className="text-xs text-green-300">Room ID: <span className="font-bold text-white">{roomData.roomId}</span></p>
+              <p className="text-xs text-green-300">Password: <span className="font-bold text-white">998877</span></p>
+            </div>
+          ) : (
+            <button 
+              onClick={handleSendJoinRequest}
+              disabled={requestStatus === 'PENDING'}
+              className={`w-full py-3 px-4 rounded-lg font-bold flex items-center justify-center gap-2 transition ${
+                requestStatus === 'PENDING' 
+                  ? 'bg-yellow-600 text-white cursor-not-allowed' 
+                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+              }`}
+            >
+              <Send className="w-4 h-4" />
+              {requestStatus === 'PENDING' ? 'Request Sent (Pending Approval)' : 'Send Join Request (NRs. 50)'}
+            </button>
+          )}
+        </div>
+
+      </div>
     </div>
   );
-};
-
-export default HostRequestPanel;
+}
