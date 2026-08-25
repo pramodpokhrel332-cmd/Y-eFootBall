@@ -210,27 +210,14 @@
   </a>
 
   <script>
-    const BIN_ID = '67bc64d3e41b4d34e498c858';
-    const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
     const ADMIN_PIN = "3029";
     let currentUser = null;
 
-    async function getDBData() {
-      try {
-        const res = await fetch(API_URL + '/latest?nocache=' + Date.now());
-        const data = await res.json();
-        return data.record || { users: {}, deposits: [], matches: [] };
-      } catch (e) {
-        return { users: {}, deposits: [], matches: [] };
-      }
+    function getLocalUsers() {
+      return JSON.parse(localStorage.getItem('ye_users') || '{}');
     }
-
-    async function updateDBData(newData) {
-      await fetch(API_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newData)
-      });
+    function saveLocalUsers(users) {
+      localStorage.setItem('ye_users', JSON.stringify(users));
     }
 
     function toggleAuth(type) {
@@ -247,48 +234,33 @@
       }
     }
 
-    // Fixed Registration Logic
-    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+    // Direct Register System
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      const btn = document.getElementById('regSubmitBtn');
-      btn.innerText = 'Creating Account...';
-      btn.disabled = true;
-
       const name = document.getElementById('regName').value.trim();
       const ownerId = document.getElementById('regOwnerId').value.trim();
-      const phone = String(document.getElementById('regPhone').value).trim();
-      const pass = String(document.getElementById('regPass').value).trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      const pass = document.getElementById('regPass').value.trim();
 
-      const dbData = await getDBData();
-      if(!dbData.users) dbData.users = {};
+      const users = getLocalUsers();
+      users[phone] = { name, ownerId, phone, pass, balance: 0 };
+      saveLocalUsers(users);
 
-      dbData.users[phone] = { name, ownerId, phone, pass, balance: 0 };
-      await updateDBData(dbData);
-      
-      btn.innerText = 'Register & Get Started';
-      btn.disabled = false;
       alert("Registration Successful! Aba Login garnuhos.");
       toggleAuth('login');
       document.getElementById('loginPhone').value = phone;
     });
 
-    // Fixed Login Logic
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    // Direct Login System
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      const btn = document.getElementById('loginSubmitBtn');
-      btn.innerText = 'Checking...';
-      btn.disabled = true;
+      const phone = document.getElementById('loginPhone').value.trim();
+      const pass = document.getElementById('loginPass').value.trim();
 
-      const phone = String(document.getElementById('loginPhone').value).trim();
-      const pass = String(document.getElementById('loginPass').value).trim();
+      const users = getLocalUsers();
+      const user = users[phone];
 
-      const dbData = await getDBData();
-      const user = dbData.users ? dbData.users[phone] : null;
-
-      btn.innerText = 'Login to Arena';
-      btn.disabled = false;
-
-      if (user && String(user.pass).trim() === pass) {
+      if (user && user.pass === pass) {
         currentUser = user;
         document.getElementById('authScreen').style.display = 'none';
         document.getElementById('mainDashboard').style.display = 'block';
@@ -296,7 +268,7 @@
         document.getElementById('userBalance').innerText = currentUser.balance || 0;
         loadMatches();
       } else {
-        alert("Invalid Mobile Number or Password!");
+        alert("Invalid Mobile Number or Password! Pehle Register garnuhos.");
       }
     });
 
@@ -334,15 +306,13 @@
     }
 
     // Submit Deposit
-    document.getElementById('depositForm').addEventListener('submit', async function(e) {
+    document.getElementById('depositForm').addEventListener('submit', function(e) {
       e.preventDefault();
       const amount = parseFloat(document.getElementById('depAmount').value);
       const ref = document.getElementById('depRef').value;
 
-      const dbData = await getDBData();
-      if(!dbData.deposits) dbData.deposits = [];
-
-      dbData.deposits.push({
+      let deposits = JSON.parse(localStorage.getItem('ye_deposits') || '[]');
+      deposits.push({
         id: Date.now(),
         userPhone: currentUser.phone,
         userName: currentUser.name,
@@ -350,22 +320,20 @@
         ref: ref,
         status: 'pending'
       });
+      localStorage.setItem('ye_deposits', JSON.stringify(deposits));
 
-      await updateDBData(dbData);
       alert("Deposit Request Submitted! Admin approve garepachi balance thapinchha.");
       this.reset();
     });
 
     // Create Match
-    document.getElementById('createMatchForm').addEventListener('submit', async function(e) {
+    document.getElementById('createMatchForm').addEventListener('submit', function(e) {
       e.preventDefault();
       const fee = parseFloat(document.getElementById('entryFee').value);
       const code = document.getElementById('roomCode').value;
 
-      const dbData = await getDBData();
-      if(!dbData.matches) dbData.matches = [];
-
-      dbData.matches.push({
+      let matches = JSON.parse(localStorage.getItem('ye_matches') || '[]');
+      matches.push({
         id: Date.now(),
         hostName: currentUser.name,
         hostOwnerId: currentUser.ownerId,
@@ -373,16 +341,15 @@
         roomCode: code,
         status: 'open'
       });
+      localStorage.setItem('ye_matches', JSON.stringify(matches));
 
-      await updateDBData(dbData);
       alert("Match Challenge Published!");
       this.reset();
       loadMatches();
     });
 
-    async function loadMatches() {
-      const dbData = await getDBData();
-      const matches = dbData.matches || [];
+    function loadMatches() {
+      const matches = JSON.parse(localStorage.getItem('ye_matches') || '[]');
       const container = document.getElementById('matchList');
       container.innerHTML = '';
 
@@ -406,9 +373,8 @@
     }
 
     // Load Admin Data
-    async function loadAdminData() {
-      const dbData = await getDBData();
-      const deposits = dbData.deposits || [];
+    function loadAdminData() {
+      const deposits = JSON.parse(localStorage.getItem('ye_deposits') || '[]');
       const container = document.getElementById('adminDepositList');
       container.innerHTML = '';
 
@@ -426,15 +392,18 @@
       });
     }
 
-    async function approveDeposit(depId) {
-      const dbData = await getDBData();
-      const dep = dbData.deposits.find(d => d.id === depId);
+    function approveDeposit(depId) {
+      let deposits = JSON.parse(localStorage.getItem('ye_deposits') || '[]');
+      const dep = deposits.find(d => d.id === depId);
       if(dep) {
         dep.status = 'approved';
-        if(dbData.users[dep.userPhone]) {
-          dbData.users[dep.userPhone].balance = (dbData.users[dep.userPhone].balance || 0) + dep.amount;
+        localStorage.setItem('ye_deposits', JSON.stringify(deposits));
+        
+        let users = getLocalUsers();
+        if(users[dep.userPhone]) {
+          users[dep.userPhone].balance = (users[dep.userPhone].balance || 0) + dep.amount;
+          saveLocalUsers(users);
         }
-        await updateDBData(dbData);
         alert("Deposit Approved!");
         loadAdminData();
       }
