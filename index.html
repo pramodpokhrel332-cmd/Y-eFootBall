@@ -71,7 +71,7 @@
       <label>Password:</label>
       <input type="password" id="loginPass" placeholder="••••••••" required>
 
-      <button type="submit" class="primary-btn" style="background:#38bdf8; color:#000;">Login to Arena</button>
+      <button type="submit" id="loginSubmitBtn" class="primary-btn" style="background:#38bdf8; color:#000;">Login to Arena</button>
     </form>
 
     <!-- Register Form -->
@@ -89,7 +89,7 @@
       <label>Create Password:</label>
       <input type="password" id="regPass" placeholder="••••••••" required>
 
-      <button type="submit" class="primary-btn">Register & Get Started</button>
+      <button type="submit" id="regSubmitBtn" class="primary-btn">Register & Get Started</button>
     </form>
   </div>
 
@@ -210,14 +210,14 @@
   </a>
 
   <script>
-    const BIN_ID = '67bc64d3e41b4d34e498c858'; // Instant Cloud DB
+    const BIN_ID = '67bc64d3e41b4d34e498c858';
     const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
     const ADMIN_PIN = "3029";
     let currentUser = null;
 
     async function getDBData() {
       try {
-        const res = await fetch(API_URL + '/latest');
+        const res = await fetch(API_URL + '/latest?nocache=' + Date.now());
         const data = await res.json();
         return data.record || { users: {}, deposits: [], matches: [] };
       } catch (e) {
@@ -247,46 +247,53 @@
       }
     }
 
-    // Register User
+    // Fixed Registration Logic
     document.getElementById('registerForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      const name = document.getElementById('regName').value;
-      const ownerId = document.getElementById('regOwnerId').value;
-      const phone = document.getElementById('regPhone').value;
-      const pass = document.getElementById('regPass').value;
+      const btn = document.getElementById('regSubmitBtn');
+      btn.innerText = 'Creating Account...';
+      btn.disabled = true;
+
+      const name = document.getElementById('regName').value.trim();
+      const ownerId = document.getElementById('regOwnerId').value.trim();
+      const phone = String(document.getElementById('regPhone').value).trim();
+      const pass = String(document.getElementById('regPass').value).trim();
 
       const dbData = await getDBData();
       if(!dbData.users) dbData.users = {};
 
-      if(dbData.users[phone]) {
-        alert("Mobile Number pahaile bata registered chha! Direct Login garnuhos.");
-        toggleAuth('login');
-        return;
-      }
-
       dbData.users[phone] = { name, ownerId, phone, pass, balance: 0 };
       await updateDBData(dbData);
       
+      btn.innerText = 'Register & Get Started';
+      btn.disabled = false;
       alert("Registration Successful! Aba Login garnuhos.");
       toggleAuth('login');
       document.getElementById('loginPhone').value = phone;
     });
 
-    // Login User
+    // Fixed Login Logic
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      const phone = document.getElementById('loginPhone').value;
-      const pass = document.getElementById('loginPass').value;
+      const btn = document.getElementById('loginSubmitBtn');
+      btn.innerText = 'Checking...';
+      btn.disabled = true;
+
+      const phone = String(document.getElementById('loginPhone').value).trim();
+      const pass = String(document.getElementById('loginPass').value).trim();
 
       const dbData = await getDBData();
       const user = dbData.users ? dbData.users[phone] : null;
 
-      if (user && user.pass === pass) {
+      btn.innerText = 'Login to Arena';
+      btn.disabled = false;
+
+      if (user && String(user.pass).trim() === pass) {
         currentUser = user;
         document.getElementById('authScreen').style.display = 'none';
         document.getElementById('mainDashboard').style.display = 'block';
         document.getElementById('displayPlayerName').innerText = currentUser.name + " (" + currentUser.ownerId + ")";
-        document.getElementById('userBalance').innerText = currentUser.balance;
+        document.getElementById('userBalance').innerText = currentUser.balance || 0;
         loadMatches();
       } else {
         alert("Invalid Mobile Number or Password!");
