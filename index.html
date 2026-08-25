@@ -1,131 +1,114 @@
-import React, { useState } from 'react';
-import { UserCheck, Check, X, Send } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Match Lobby</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-white min-h-screen flex items-center justify-center p-4">
 
-export default function GameRoom() {
-  // State for Manage Pending Requests
-  const [requests, setRequests] = useState([
-    { requestId: '1', userId: 'user_101', playerName: 'Alex_Gamer', entryFee: 50 },
-    { requestId: '2', userId: 'user_102', playerName: 'Pro_Striker', entryFee: 50 }
-  ]);
-
-  const [isOpen, setIsOpen] = useState(false);
-  const [roomData, setRoomData] = useState({ roomId: '12345', password: '****' });
-  const [isJoined, setIsJoined] = useState(false);
-  const [requestStatus, setRequestStatus] = useState('IDLE'); // IDLE, PENDING, APPROVED
-
-  // Host Action: Approve Request (Payment Deducted Here)
-  const handleApprove = (requestId, userId) => {
-    // 1. Remove from Pending Requests
-    setRequests(requests.filter((req) => req.requestId !== requestId));
+  <div class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-2xl">
     
-    // 2. Reveal ID & Pass to approved player logic
-    alert(`Request ${requestId} Approved! Payment deducted & Credentials sent.`);
-  };
+    <!-- Header Area -->
+    <div class="flex items-center justify-between mb-6 border-b border-gray-800 pb-4">
+      <h2 class="text-xl font-bold text-indigo-400">Match Lobby</h2>
+      
+      <!-- HOST ICON BUTTON -->
+      <div class="relative">
+        <button id="reqBtn" class="p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition shadow-lg flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+        </button>
 
-  // Host Action: Reject Request
-  const handleReject = (requestId) => {
-    setRequests(requests.filter((req) => req.requestId !== requestId));
-    alert(`Request ${requestId} Rejected! No payment deducted.`);
-  };
-
-  // Player Action: Send Request
-  const handleSendJoinRequest = () => {
-    setRequestStatus('PENDING');
-    alert("Request sent to Host! Money will deduct only after approval.");
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-950 text-white p-6 flex flex-col items-center justify-center font-sans">
-      <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-2xl relative">
-        
-        {/* Header Section */}
-        <div className="flex items-center justify-between mb-6 border-b border-gray-800 pb-4">
-          <h2 className="text-xl font-bold text-indigo-400">Match Lobby</h2>
-
-          {/* HOST SECTION: Request Icon */}
-          <div className="relative">
-            <button 
-              onClick={() => setIsOpen(!isOpen)}
-              className="p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition flex items-center justify-center shadow-lg"
-              title="Join Requests"
-            >
-              <UserCheck className="w-6 h-6" />
-            </button>
-
-            {/* Host Request Pop-up Menu */}
-            {isOpen && (
-              <div className="absolute right-0 mt-3 w-80 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 p-4">
-                <h3 className="text-white font-bold mb-3 border-b border-gray-800 pb-2">
-                  Join Requests
-                </h3>
-
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {requests.length === 0 ? (
-                    <p className="text-gray-400 text-sm text-center py-2">No pending requests</p>
-                  ) : (
-                    requests.map((req) => (
-                      <div key={req.requestId} className="flex items-center justify-between bg-gray-800 p-3 rounded-lg border border-gray-700">
-                        <div>
-                          <p className="text-sm font-semibold text-white">{req.playerName}</p>
-                          <p className="text-xs text-green-400 font-medium">Entry Fee: NRs. {req.entryFee}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => handleApprove(req.requestId, req.userId)}
-                            className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center justify-center transition"
-                            title="Approve & Deduct Payment"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleReject(req.requestId)}
-                            className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-md flex items-center justify-center transition"
-                            title="Reject Request"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+        <!-- Pop-up Box for Host -->
+        <div id="popover" class="hidden absolute right-0 mt-3 w-80 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 p-4">
+          <h3 class="text-white font-bold mb-3 border-b border-gray-800 pb-2">Join Requests</h3>
+          <div id="requestList" class="space-y-3 max-h-60 overflow-y-auto"></div>
         </div>
-
-        {/* PLAYER SECTION */}
-        <div className="space-y-4">
-          <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-            <p className="text-xs text-gray-400">Room Status</p>
-            <p className="text-sm font-semibold text-gray-200">
-              {requestStatus === 'APPROVED' ? "Room ID & Pass Unlocked" : "Waiting for Approval"}
-            </p>
-          </div>
-
-          {/* Reveal Credentials ONLY when Approved */}
-          {requestStatus === 'APPROVED' ? (
-            <div className="bg-green-950 border border-green-600 p-4 rounded-lg space-y-1">
-              <p className="text-xs text-green-300">Room ID: <span className="font-bold text-white">{roomData.roomId}</span></p>
-              <p className="text-xs text-green-300">Password: <span className="font-bold text-white">998877</span></p>
-            </div>
-          ) : (
-            <button 
-              onClick={handleSendJoinRequest}
-              disabled={requestStatus === 'PENDING'}
-              className={`w-full py-3 px-4 rounded-lg font-bold flex items-center justify-center gap-2 transition ${
-                requestStatus === 'PENDING' 
-                  ? 'bg-yellow-600 text-white cursor-not-allowed' 
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-              }`}
-            >
-              <Send className="w-4 h-4" />
-              {requestStatus === 'PENDING' ? 'Request Sent (Pending Approval)' : 'Send Join Request (NRs. 50)'}
-            </button>
-          )}
-        </div>
-
       </div>
     </div>
-  );
-}
+
+    <!-- PLAYER AREA -->
+    <div class="space-y-4">
+      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <p class="text-xs text-gray-400">Room Status</p>
+        <p id="statusText" class="text-sm font-semibold text-gray-200">Waiting for Request</p>
+      </div>
+
+      <!-- Secret ID and Pass Reveal Container -->
+      <div id="roomDetails" class="hidden bg-green-950 border border-green-600 p-4 rounded-lg space-y-1">
+        <p class="text-xs text-green-300">Room ID: <span class="font-bold text-white">123456</span></p>
+        <p class="text-xs text-green-300">Password: <span class="font-bold text-white">998877</span></p>
+      </div>
+
+      <button id="joinBtn" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition">
+        Send Join Request (NRs. 50)
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    let requests = [
+      { id: '1', name: 'Alex_Gamer', fee: 50 },
+      { id: '2', name: 'Pro_Striker', fee: 50 }
+    ];
+
+    const reqBtn = document.getElementById('reqBtn');
+    const popover = document.getElementById('popover');
+    const requestList = document.getElementById('requestList');
+    const joinBtn = document.getElementById('joinBtn');
+    const statusText = document.getElementById('statusText');
+    const roomDetails = document.getElementById('roomDetails');
+
+    // Toggle Host Request Window
+    reqBtn.onclick = () => popover.classList.toggle('hidden');
+
+    // Render Request List
+    function renderRequests() {
+      if(requests.length === 0) {
+        requestList.innerHTML = `<p class="text-gray-400 text-sm text-center py-2">No pending requests</p>`;
+        return;
+      }
+      requestList.innerHTML = requests.map(req => `
+        <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg border border-gray-700">
+          <div>
+            <p class="text-sm font-semibold text-white">${req.name}</p>
+            <p class="text-xs text-green-400 font-medium">Entry Fee: NRs. ${req.fee}</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="approve('${req.id}')" class="p-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-bold">✓ Approve</button>
+            <button onclick="reject('${req.id}')" class="p-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-bold">✕ Reject</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Approve Action
+    window.approve = (id) => {
+      requests = requests.filter(r => r.id !== id);
+      renderRequests();
+      alert('Request Approved! Payment deducted & Credentials unlocked.');
+      statusText.innerText = "Request Approved!";
+      roomDetails.classList.remove('hidden');
+    };
+
+    // Reject Action
+    window.reject = (id) => {
+      requests = requests.filter(r => r.id !== id);
+      renderRequests();
+      alert('Request Rejected! No money deducted.');
+    };
+
+    // Send Join Request Action
+    joinBtn.onclick = () => {
+      joinBtn.innerText = "Request Sent (Pending Approval)";
+      joinBtn.disabled = true;
+      joinBtn.className = "w-full py-3 px-4 bg-yellow-600 text-white font-bold rounded-lg cursor-not-allowed";
+      statusText.innerText = "Waiting for Host Approval...";
+    };
+
+    renderRequests();
+  </script>
+</body>
+</html>
