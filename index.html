@@ -115,7 +115,7 @@
       <button class="tab-btn" onclick="switchTab('deposit')">Deposit</button>
       <button class="tab-btn" onclick="switchTab('result')">Submit Result</button>
       <button class="tab-btn" onclick="switchTab('rules')">Match Rules</button>
-      <button class="tab-btn" style="border-color:#ef4444;" onclick="switchTab('admin')">Admin</button>
+      <button class="tab-btn" style="border-color:#ef4444;" onclick="openAdminPanel()">Admin Panel</button>
     </div>
 
     <div class="wallet-card">
@@ -251,6 +251,7 @@
 
   <script>
     let currentUser = null;
+    const ADMIN_PIN = "3029"; // Secret Admin PIN
 
     function toggleAuth(type) {
       if(type === 'login') {
@@ -314,7 +315,18 @@
       document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.getElementById(tabId).classList.add('active');
-      event.target.classList.add('active');
+      if(event && event.target) {
+        event.target.classList.add('active');
+      }
+    }
+
+    function openAdminPanel() {
+      const inputPin = prompt("🔑 Enter Admin Passcode:");
+      if (inputPin === ADMIN_PIN) {
+        switchTab('admin');
+      } else if (inputPin !== null) {
+        alert("❌ Wrong Admin Passcode! Access Denied.");
+      }
     }
 
     function calculatePool() {
