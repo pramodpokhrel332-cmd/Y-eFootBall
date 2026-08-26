@@ -23,6 +23,8 @@
     
     .user-bar { background: #0f172a; padding: 10px 14px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
     .menu-btn { background: #38bdf8; color: #000; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; }
+    .rules-btn { background: #f59e0b; color: #000; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 11px; cursor: pointer; margin-right: 5px; }
+    
     .wallet-card { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid #38bdf8; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
     .wallet-bal { font-size: 20px; font-weight: bold; color: #22c55e; }
     .win-bal-text { font-size: 11px; color: #38bdf8; margin-top: 2px; }
@@ -69,6 +71,16 @@
     .tourn-subtabs { display: flex; gap: 8px; margin-bottom: 12px; }
     .tourn-subbtn { flex: 1; padding: 6px; background: #0f172a; border: 1px solid #334155; color: #94a3b8; font-weight: bold; border-radius: 6px; font-size: 12px; cursor: pointer; }
     .tourn-subbtn.active { background: #38bdf8; color: #000; border-color: #38bdf8; }
+
+    /* Modal Styling */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 2000; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .modal-content { background: #1e293b; border: 1px solid #38bdf8; border-radius: 12px; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 12px; }
+    .close-modal-btn { background: #ef4444; border: none; color: #fff; font-size: 14px; padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+    .rule-list { list-style-type: none; font-size: 13px; color: #cbd5e1; }
+    .rule-list li { margin-bottom: 10px; border-bottom: 1px dashed #334155; padding-bottom: 8px; line-height: 1.4; }
+    .rule-list b { color: #38bdf8; }
   </style>
 </head>
 <body>
@@ -113,8 +125,11 @@
         <span style="font-size: 11px; color: #94a3b8;">Player:</span>
         <b id="displayPlayerName" style="color: #38bdf8; font-size: 13px;">-</b>
       </div>
-      <button class="menu-btn" onclick="switchTab('news')">📢 News & Offers</button>
-      <button style="background: #ef4444; border: none; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight:bold;" onclick="logout()">Logout</button>
+      <div>
+        <button class="rules-btn" onclick="openRulesModal()">📜 Rules</button>
+        <button class="menu-btn" onclick="switchTab('news')">📢 News</button>
+        <button style="background: #ef4444; border: none; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight:bold;" onclick="logout()">Logout</button>
+      </div>
     </div>
 
     <div class="tab-nav">
@@ -145,6 +160,9 @@
       <div class="card">
         <h2>⚽ Create Custom Match</h2>
         <form id="createMatchForm">
+          <label>Tournament / Match Name:</label>
+          <input type="text" id="matchName" placeholder="e.g. Champion Cup 1v1" required>
+
           <label>Entry Fee Per Player (Min Rs. 17):</label>
           <input type="number" id="entryFee" min="17" value="17" required oninput="calculatePool()">
 
@@ -275,6 +293,23 @@
 
   </div>
 
+  <!-- Rules Modal -->
+  <div id="rulesModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 style="color:#f59e0b; margin:0; font-size:18px;">📜 Rules & Policies</h2>
+        <button class="close-modal-btn" onclick="closeRulesModal()">X</button>
+      </div>
+      <ul class="rule-list">
+        <li><b>⚽ Match Rules:</b> Host ले Match Accept गरेपछि १० मिनेटभित्र Room ID र Password हालिसक्नुपर्छ। Match सुरु भएको ३० मिनेटपछि Auto-Remove हुन्छ।</li>
+        <li><b>🚫 Fair Play Policy:</b> Match को बीचमा जानी-जानी Network Disconnect गर्ने, Hack/Cheat प्रयोग गर्ने वा अर्काको Owner ID प्रयोग गर्ने Player लाई सिधै Ban गरिनेछ र Money Loss मानिनेछ।</li>
+        <li><b>💳 Deposit Policy:</b> Deposit गर्दा सधैं सही Transaction Ref Code र Clear Screenshot Upload गर्नुपर्छ। प्रति Deposit <b>Rs. 2 Fee</b> काटिनेछ। झुटो Ref Code पठाएमा Account Permanent Block हुन सक्छ।</li>
+        <li><b>💸 Withdrawal Policy:</b> Minimum Withdrawal <b>Rs. 75</b> हो। Withdrawal गर्दा <b>Rs. 5 Charge</b> लाग्छ। Withdrawal गर्न कुल रकमको कम्तीमा <b>35% Win Balance</b> हुनु अनिवार्य छ।</li>
+        <li><b>📸 Match Dispute/Proof:</b> Match जितिसकेपछि सधैं Scoreboard को Clear Screenshot लिइराख्नुहोला। प्रतिद्वन्द्वीले नमानेमा वा विवाद भएमा Screenshot/Screen Recording **WhatsApp Support** मा पठाउनु पर्नेछ।</li>
+      </ul>
+    </div>
+  </div>
+
   <a href="https://wa.me/9779847430292" class="whatsapp-btn" target="_blank">💬 WhatsApp Support</a>
 
   <script>
@@ -291,7 +326,9 @@
     const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Ref Code", "Payment Not Received", "Insufficient Amount", "Duplicate Submission"];
     const WITHDRAW_REJECT_REASONS = ["Invalid Account Number", "Name Mismatch", "Rule Violated", "Suspicious Activity"];
 
-    // Compressed Image Function for Super Fast Uploads
+    function openRulesModal() { document.getElementById('rulesModal').classList.add('active'); }
+    function closeRulesModal() { document.getElementById('rulesModal').classList.remove('active'); }
+
     function compressAndPreviewImg(input) {
       const file = input.files[0];
       if (!file) return;
@@ -304,7 +341,7 @@
           let width = img.width;
           let height = img.height;
           
-          const maxDim = 800; // Resize image dimension
+          const maxDim = 800;
           if (width > height && width > maxDim) {
             height = Math.round((height * maxDim) / width);
             width = maxDim;
@@ -318,7 +355,6 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Quality compressed JPEG Base64
           compressedImageData = canvas.toDataURL('image/jpeg', 0.6);
 
           const previewImg = document.getElementById('depImgPreview');
@@ -420,6 +456,7 @@
       const btn = document.getElementById('btnPublishMatch');
       btn.disabled = true;
 
+      const mName = document.getElementById('matchName').value.trim();
       const fee = parseFloat(document.getElementById('entryFee').value);
       const mTimeInput = document.getElementById('matchTime').value;
 
@@ -429,6 +466,7 @@
       const formattedTime = new Date(mTimeInput).toISOString();
 
       const { error } = await _supabase.from('matches').insert([{ 
+        match_name: mName,
         host_name: currentUser.name, 
         host_owner_id: currentUser.owner_id, 
         host_phone: String(currentUser.phone), 
@@ -446,7 +484,7 @@
         currentUser.balance = newBal;
         document.getElementById('userBalance').innerText = newBal;
 
-        alert("✅ Match Published!"); 
+        alert("✅ Tournament Published!"); 
         this.reset(); 
         loadMatches(); 
       }
@@ -502,6 +540,7 @@
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
         const matchDate = m.match_time ? new Date(m.match_time).toLocaleString() : 'N/A';
         const isLocked = (m.status === 'full' || m.status === 'locked' || m.status === 'started');
+        const tournamentTitle = m.match_name ? `<b style="color:#f59e0b;">${m.match_name}</b>` : `Match #${m.id}`;
 
         if(isLocked) {
           const lockedTime = new Date(m.updated_at || m.created_at).getTime();
@@ -509,7 +548,7 @@
 
           lockedContainer.innerHTML += `
             <div class="match-item locked">
-              <div class="match-header"><span>🔒 Match #${m.id} (Host: ${m.host_name})</span><span style="color:#ef4444;">FULL / STARTED</span></div>
+              <div class="match-header"><span>🔒 ${tournamentTitle} (Host: ${m.host_name})</span><span style="color:#ef4444;">FULL / STARTED</span></div>
               <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b> | Time: ${matchDate}</div>
               <div style="font-size:10px; color:#f59e0b; margin-top:4px;">⏱ Auto-removes 30 mins after start</div>
             </div>`;
@@ -520,7 +559,7 @@
 
           openContainer.innerHTML += `
             <div class="match-item">
-              <div class="match-header"><span>Host: ${m.host_name}</span><span style="color:#38bdf8;">Entry: Rs. ${m.entry_fee}</span></div>
+              <div class="match-header"><span>🏆 ${tournamentTitle} <span style="font-size:11px; color:#94a3b8;">(Host: ${m.host_name})</span></span><span style="color:#38bdf8;">Entry: Rs. ${m.entry_fee}</span></div>
               <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b> | Time: ${matchDate}</div>
               ${actionArea}
             </div>`;
@@ -571,6 +610,7 @@
       matches.forEach(m => {
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
         const isAcceptedGuest = currentUser && (String(currentUser.phone).trim() === String(m.guest_phone).trim());
+        const title = m.match_name ? m.match_name : `Match #${m.id}`;
         
         let requests = m.requests || [];
         const myRequest = requests.find(r => String(r.phone) === String(currentUser.phone));
@@ -601,7 +641,7 @@
 
           container.innerHTML += `
             <div class="req-item">
-              <div><b>Match #${m.id}</b> | Entry: Rs. ${m.entry_fee}</div>
+              <div><b>🏆 ${title}</b> | Entry: Rs. ${m.entry_fee}</div>
               <div style="font-size:12px; color:#94a3b8; margin-top:2px;">Opponent: <b>${m.guest_name || 'Not Selected'}</b></div>
               ${hostContent}
             </div>`;
@@ -620,7 +660,7 @@
 
           container.innerHTML += `
             <div class="req-item">
-              <div>Host: <b>${m.host_name}</b> | Entry: Rs. ${m.entry_fee}</div>
+              <div><b>🏆 ${title}</b> (Host: ${m.host_name}) | Entry: Rs. ${m.entry_fee}</div>
               ${guestStatusUI}
             </div>`;
         }
@@ -742,9 +782,10 @@
       uniqueMatches.forEach(m => {
         const isHost = String(m.host_phone) === String(currentUser.phone);
         const opponent = isHost ? (m.guest_name || 'Waiting...') : m.host_name;
+        const title = m.match_name ? m.match_name : `Match #${m.id}`;
         historyList.push({
           category: 'match',
-          type: `⚽ Match #${m.id} vs ${opponent}`,
+          type: `⚽ ${title} vs ${opponent}`,
           amount: m.entry_fee,
           status: m.status,
           date: new Date(m.created_at)
@@ -778,11 +819,9 @@
       });
     }
 
-    // Fast Admin Load (Excludes Image Blobs until requested)
     async function loadAdminData() {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-      // Fetch without proof_img for ultra-fast load
       const { data: deposits } = await _supabase.from('deposits').select('id, user_name, user_phone, amount, ref, created_at').eq('status', 'pending').order('id', { ascending: false });
       const depContainer = document.getElementById('adminDepositList'); 
       depContainer.innerHTML = '';
