@@ -70,7 +70,6 @@
     .news-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .news-icon { font-size: 24px; background: rgba(255,255,255,0.1); padding: 6px; border-radius: 8px; }
     .news-title { font-size: 15px; font-weight: bold; color: #f0f9ff; }
-    .news-date { font-size: 10px; color: #93c5fd; }
     .news-body { font-size: 13px; color: #e0f2fe; line-height: 1.4; margin-top: 4px; }
 
     /* Stats Grid */
@@ -145,7 +144,6 @@
       <button class="tab-btn" onclick="switchTab('history')">📊 History</button>
       <button class="tab-btn" onclick="switchTab('deposit')">Deposit</button>
       <button class="tab-btn" onclick="switchTab('withdraw')">Withdraw</button>
-      <button class="tab-btn" onclick="switchTab('result')">Submit Result</button>
       <button class="tab-btn" style="border-color:#ef4444;" onclick="openAdminPanel()">Admin Panel</button>
     </div>
 
@@ -170,8 +168,14 @@
           <label>Entry Fee Per Player (Min Rs. 17):</label>
           <input type="number" id="entryFee" min="17" value="17" required oninput="calculatePool()">
 
-          <label>Match Room Code / Pass:</label>
-          <input type="text" id="roomCode" placeholder="e.g. 0912-8871" required>
+          <label>Match Start Time:</label>
+          <input type="datetime-local" id="matchTime" required>
+
+          <label>Match Room ID / Code:</label>
+          <input type="text" id="roomId" placeholder="e.g. 09128871" required>
+
+          <label>Match Room Password:</label>
+          <input type="text" id="roomPass" placeholder="e.g. 1234" required>
 
           <div class="pool-calc">
             <p>Total Pool: <span id="totalPool" style="color:#fff; font-weight:bold;">Rs. 34</span></p>
@@ -214,7 +218,7 @@
       </div>
 
       <div class="card" style="border-color: #22c55e;">
-        <h2>🎮 My Match History</h2>
+        <h2>🎮 My Match History & Upload Proof</h2>
         <div id="gameHistoryList">Loading match history...</div>
       </div>
     </div>
@@ -273,33 +277,8 @@
       </div>
     </div>
 
-    <!-- Result & Claim Win Page -->
-    <div id="result" class="page">
-      <div class="card" style="border-color: #f59e0b;">
-        <h2 style="color: #f59e0b;">🏆 Claim Win & Submit Result</h2>
-        <form id="resultForm">
-          <label>Select Active Match:</label>
-          <select id="resMatchSelect" required></select>
-
-          <label>Your Score:</label>
-          <input type="number" id="myScore" placeholder="3" min="0" required>
-          
-          <label>Opponent Score:</label>
-          <input type="number" id="oppScore" placeholder="1" min="0" required>
-
-          <label>📷 Upload Match Result Screenshot:</label>
-          <input type="file" id="resFile" accept="image/*" required onchange="previewImg(this, 'resImgPreview')">
-          <img id="resImgPreview" class="img-preview" alt="Score Preview">
-
-          <button type="submit" class="primary-btn" style="background: #f59e0b; color: #000;">⚡ Submit Verified Result</button>
-        </form>
-      </div>
-    </div>
-
     <!-- Admin Page -->
     <div id="admin" class="page">
-      
-      <!-- Financial Stats Dashboard -->
       <div class="card" style="border-color: #22c55e;">
         <h2 style="color: #22c55e;">📊 Platform Earnings & Statistics</h2>
         <div class="stat-grid">
@@ -322,13 +301,6 @@
         </div>
       </div>
 
-      <!-- Disputed Matches Area -->
-      <div class="card" style="border-color: #ef4444;">
-        <h2 style="color: #ef4444;">⚠️ Disputed / Unresolved Matches</h2>
-        <div id="adminDispiteList">Loading match disputes...</div>
-      </div>
-
-      <!-- News Publisher -->
       <div class="card" style="border-color: #eab308;">
         <h2 style="color: #fde047;">📢 Admin News & Announcement Publisher</h2>
         <form id="adminPostNewsForm">
@@ -370,7 +342,6 @@
     const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Reference Code", "Payment Not Received in eSewa", "Insufficient Transfer Amount", "Duplicate Transaction ID Submission"];
     const WITHDRAW_REJECT_REASONS = ["Invalid eSewa/Khalti Account Number", "Account Holder Name Mismatch", "Minimum Balance Rule Violated", "Suspicious Activity / Fraud Alert"];
 
-    // Play Sound Notification
     function playNotificationSound() {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = audioCtx.createOscillator();
@@ -384,7 +355,6 @@
       osc.stop(audioCtx.currentTime + 0.2);
     }
 
-    // Image Helper: Base64 Converter
     function previewImg(input, targetId) {
       const file = input.files[0];
       if(file) {
@@ -412,7 +382,6 @@
       }
     }
 
-    // Cloud Register
     document.getElementById('registerForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const name = document.getElementById('regName').value.trim();
@@ -428,7 +397,6 @@
       else { alert("Registration Successful! Please Login."); toggleAuth('login'); document.getElementById('loginPhone').value = phone; }
     });
 
-    // Cloud Login
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const phone = document.getElementById('loginPhone').value.trim();
@@ -447,7 +415,6 @@
         loadMatches();
         loadRequestsTab();
         loadHistoryTab();
-        loadActiveMatchesForSelect();
         subscribeRealtime();
       } else { alert("Invalid Mobile Number or Password!"); }
     });
@@ -463,7 +430,6 @@
       if (tabId === 'news') loadNews();
       if (tabId === 'requests') loadRequestsTab();
       if (tabId === 'history') loadHistoryTab();
-      if (tabId === 'result') loadActiveMatchesForSelect();
     }
 
     function openAdminPanel() {
@@ -478,7 +444,7 @@
       document.getElementById('winnerPrize').innerText = `Rs. ${(fee * 2 * 0.9).toFixed(1)}`;
     }
 
-    // --- NEWS SYSTEM ---
+    // NEWS SYSTEM
     document.getElementById('adminPostNewsForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const title = document.getElementById('newsTitleInput').value.trim();
@@ -516,7 +482,9 @@
     document.getElementById('createMatchForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const fee = parseFloat(document.getElementById('entryFee').value);
-      const code = document.getElementById('roomCode').value;
+      const mTime = document.getElementById('matchTime').value;
+      const rId = document.getElementById('roomId').value;
+      const rPass = document.getElementById('roomPass').value;
 
       if(currentUser.balance < fee) { alert(`❌ Insufficient Balance!`); return; }
 
@@ -525,15 +493,29 @@
       currentUser.balance = newBal;
       document.getElementById('userBalance').innerText = newBal;
 
-      const { error } = await _supabase.from('matches').insert([{ host_name: currentUser.name, host_owner_id: currentUser.owner_id, host_phone: currentUser.phone, entry_fee: fee, room_code: code, status: 'open' }]);
+      const { error } = await _supabase.from('matches').insert([{ 
+        host_name: currentUser.name, 
+        host_owner_id: currentUser.owner_id, 
+        host_phone: currentUser.phone, 
+        entry_fee: fee, 
+        match_time: mTime,
+        room_id: rId,
+        room_pass: rPass,
+        status: 'open' 
+      }]);
       if(!error) { alert("✅ Match Published!"); this.reset(); loadMatches(); }
     });
 
-    // Request Match
+    // Request & Join Match (PROBLEM 3 FIX: Join हुदा status full हुन्छ)
     async function sendJoinRequest(matchId, entryFee) {
       if(currentUser.balance < entryFee) { alert(`❌ Insufficient Balance!`); return; }
-      await _supabase.from('matches').update({ guest_name: currentUser.name, guest_owner_id: currentUser.owner_id, guest_phone: currentUser.phone, status: 'requested' }).eq('id', matchId);
-      alert("📩 Challenge Request Sent!"); loadMatches(); loadRequestsTab();
+      await _supabase.from('matches').update({ 
+        guest_name: currentUser.name, 
+        guest_owner_id: currentUser.owner_id, 
+        guest_phone: currentUser.phone, 
+        status: 'full' 
+      }).eq('id', matchId);
+      alert("📩 Match Joined Successfully!"); loadMatches(); loadRequestsTab();
     }
 
     // Accept Challenge
@@ -542,7 +524,7 @@
       if (!opponent || opponent.balance < entryFee) { alert("❌ Opponent सँग पर्याप्त Balance छैन!"); return; }
 
       await _supabase.from('users').update({ balance: opponent.balance - entryFee }).eq('phone', guestPhone);
-      await _supabase.from('matches').update({ status: 'accepted' }).eq('id', matchId);
+      await _supabase.from('matches').update({ status: 'full' }).eq('id', matchId);
       alert("✅ Challenge Accepted!"); loadMatches(); loadRequestsTab();
     }
 
@@ -552,28 +534,44 @@
       alert("🚫 Request Rejected!"); loadMatches(); loadRequestsTab();
     }
 
-    // Load Live Matches
+    // PROBLEM 3 FIX: FILTER status = 'open' only
     async function loadMatches() {
       const { data: matches } = await _supabase.from('matches').select('*').eq('status', 'open').order('id', { ascending: false });
       const container = document.getElementById('matchList'); container.innerHTML = '';
 
-      if(!matches || matches.length === 0) { container.innerHTML = '<p style="font-size:13px; color:#94a3b8;">No open matches available.</p>'; return; }
+      if(!matches || matches.length === 0) { container.innerHTML = '<p style="font-size:13px; color:#94a3b8;">No open matches available right now.</p>'; return; }
 
       matches.forEach(m => {
         const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
         const isHost = currentUser && currentUser.phone === m.host_phone;
-        let actionArea = isHost ? `<p style="color:#f59e0b; font-size:12px; margin-top:8px;">⏳ Waiting for opponent...</p>` : `<button class="join-btn" onclick="sendJoinRequest(${m.id}, ${m.entry_fee})">Request Match (Rs. ${m.entry_fee})</button>`;
+        let actionArea = isHost ? `<p style="color:#f59e0b; font-size:12px; margin-top:8px;">⏳ Waiting for opponent to join...</p>` : `<button class="join-btn" onclick="sendJoinRequest(${m.id}, ${m.entry_fee})">Join Match (Rs. ${m.entry_fee})</button>`;
 
         container.innerHTML += `
           <div class="match-item">
             <div class="match-header"><span>Host: ${m.host_name}</span><span style="color:#38bdf8;">Entry: Rs. ${m.entry_fee}</span></div>
-            <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b></div>
+            <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b> | Time: ${new Date(m.match_time).toLocaleString()}</div>
             ${actionArea}
           </div>`;
       });
     }
 
-    // Load Requests
+    // PROBLEM 2 FIX: 5-MIN LOCK TIMER LOGIC FOR ROOM CODE & PASS
+    function getRoomDetailsHtml(m) {
+      if(!m.match_time) return `<div class="code-box">🔑 Room ID: ${m.room_id || 'Wait...'} | Pass: ${m.room_pass || 'Wait...'}</div>`;
+
+      const matchTime = new Date(m.match_time).getTime();
+      const currentTime = new Date().getTime();
+      const diffMinutes = (matchTime - currentTime) / (1000 * 60);
+
+      // खेल सुरु हुन ५ मिनेट वा सोभन्दा कम बाँकी भएमा वा भर्खर सुरु भएको भएमा अनलक
+      if (diffMinutes <= 5 && diffMinutes >= -60) {
+        return `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
+      } else {
+        return `<p style="color:#ef4444; font-size:12px; font-weight:bold; margin-top:8px;">🔒 Room ID & Password will unlock 5 minutes before match start time.</p>`;
+      }
+    }
+
+    // Load Requests & Joined Matches
     async function loadRequestsTab() {
       const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false });
       const container = document.getElementById('requestsList'); container.innerHTML = '';
@@ -585,10 +583,8 @@
 
         if (isHost || isGuest) {
           let reqHtml = '';
-          if (m.status === 'requested') {
-            reqHtml = isHost ? `<div class="action-row"><button class="accept-btn" onclick="acceptChallengeRequest(${m.id}, '${m.guest_phone}', ${m.entry_fee})">✅ Accept</button><button class="reject-btn" onclick="rejectChallengeRequest(${m.id})">❌ Reject</button></div>` : '<p style="color:#f59e0b; font-size:12px;">⏳ Waiting for Host...</p>';
-          } else if (m.status === 'accepted') {
-            reqHtml = `<div class="code-box">🔑 ROOM CODE: ${m.room_code}</div>`;
+          if (m.status === 'full') {
+            reqHtml = getRoomDetailsHtml(m);
           }
 
           container.innerHTML += `
@@ -600,71 +596,7 @@
       });
     }
 
-    // Populate Active Matches in Submit Result Tab
-    async function loadActiveMatchesForSelect() {
-      if(!currentUser) return;
-      const { data: matches } = await _supabase.from('matches').select('*').eq('status', 'accepted').or(`host_phone.eq.${currentUser.phone},guest_phone.eq.${currentUser.phone}`);
-      const select = document.getElementById('resMatchSelect'); select.innerHTML = '';
-
-      if(!matches || matches.length === 0) { select.innerHTML = '<option value="">No Active Playing Matches Found</option>'; return; }
-
-      matches.forEach(m => { select.innerHTML += `<option value="${m.id}">Match #${m.id} vs ${currentUser.phone === m.host_phone ? m.guest_name : m.host_name}</option>`; });
-    }
-
-    // AUTOMATED WIN CLAIM LOGIC
-    document.getElementById('resultForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const matchId = document.getElementById('resMatchSelect').value;
-      const mySc = parseInt(document.getElementById('myScore').value);
-      const oppSc = parseInt(document.getElementById('oppScore').value);
-      const imgPreview = document.getElementById('resImgPreview').src;
-
-      if(!matchId) { alert("Please select a match!"); return; }
-
-      const { data: match } = await _supabase.from('matches').select('*').eq('id', matchId).single();
-      const isHost = currentUser.phone === match.host_phone;
-
-      // Update current user submission
-      const updateData = isHost 
-        ? { host_score: mySc, host_proof: imgPreview }
-        : { guest_score: oppSc, guest_proof: imgPreview };
-
-      await _supabase.from('matches').update(updateData).eq('id', matchId);
-
-      // Fetch fresh state to check both submissions
-      const { data: freshMatch } = await _supabase.from('matches').select('*').eq('id', matchId).single();
-
-      if(freshMatch.host_score !== null && freshMatch.guest_score !== null) {
-        // BOTH SUBMITTED: VERIFY LOGIC
-        if(freshMatch.host_score === freshMatch.guest_score) {
-          // DISPUTE FOUND (Scores match up inversely or conflict)
-          await _supabase.from('matches').update({ status: 'disputed' }).eq('id', matchId);
-          alert("⚠️ Score mismatch / Conflict detected! Sent to Admin for Dispute resolution.");
-        } else {
-          // VALID WINNER CALCULATION
-          const hostWon = freshMatch.host_score > freshMatch.guest_score;
-          const winnerPhone = hostWon ? freshMatch.host_phone : freshMatch.guest_phone;
-          const prizePool = freshMatch.entry_fee * 2 * 0.90;
-
-          // Transfer Winner Balance
-          const { data: winUser } = await _supabase.from('users').select('balance').eq('phone', winnerPhone).single();
-          if(winUser) {
-            await _supabase.from('users').update({ balance: winUser.balance + prizePool }).eq('phone', winnerPhone);
-          }
-
-          await _supabase.from('matches').update({ status: 'completed', winner_phone: winnerPhone }).eq('id', matchId);
-          alert(`🎉 AUTOMATED WINNER VERIFIED! Rs. ${prizePool} credited to Winner Wallet!`);
-        }
-      } else {
-        alert("✅ Result & Screenshot Submitted! Waiting for Opponent to submit score...");
-      }
-
-      this.reset();
-      document.getElementById('resImgPreview').style.display = 'none';
-      switchTab('arena');
-    });
-
-    // Deposit Submit (With Image Proof)
+    // Deposit Submit
     document.getElementById('depositForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const amount = parseFloat(document.getElementById('depAmount').value);
@@ -701,7 +633,30 @@
       }
     });
 
-    // History Tab
+    // PROBLEM 4 FIX: SPECIFIC PROOF UPLOAD INSIDE MY MATCH HISTORY
+    async function uploadMatchProof(matchId, inputElement) {
+      const file = inputElement.files[0];
+      if(!file) return alert("Select photo first!");
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const base64Img = e.target.result;
+        const { error } = await _supabase.from('matches').update({ 
+          winner_proof: base64Img, 
+          status: 'proof_submitted' 
+        }).eq('id', matchId);
+
+        if(!error) {
+          alert("✅ Proof Uploaded for Match #" + matchId);
+          loadHistoryTab();
+        } else {
+          alert("❌ Upload failed!");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // History Tab & Match History Render
     async function loadHistoryTab() {
       if(!currentUser) return;
       const { data: deps } = await _supabase.from('deposits').select('*').eq('user_phone', currentUser.phone);
@@ -723,11 +678,41 @@
             ${t.reason ? `<div style="color:#ef4444; font-size:11px;">Reason: ${t.reason}</div>` : ''}
           </div>`;
       });
+
+      // Load Game History & Specific Upload Icon
+      const { data: myMatches } = await _supabase.from('matches').select('*').or(`host_phone.eq.${currentUser.phone},guest_phone.eq.${currentUser.phone}`).order('id', { ascending: false });
+      const gameContainer = document.getElementById('gameHistoryList'); gameContainer.innerHTML = '';
+
+      if(!myMatches || myMatches.length === 0) {
+        gameContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No match history found.</p>';
+        return;
+      }
+
+      myMatches.forEach(m => {
+        let uploadArea = '';
+        if(m.winner_proof) {
+          uploadArea = `<p style="color:#22c55e; font-size:11px; margin-top:5px;">✅ Proof Submitted</p>`;
+        } else {
+          uploadArea = `
+            <div style="margin-top:8px;">
+              <label style="font-size:11px; color:#38bdf8;">📷 Upload Match Screenshot Proof:</label>
+              <input type="file" accept="image/*" style="font-size:11px; padding:4px;" onchange="uploadMatchProof(${m.id}, this)">
+            </div>`;
+        }
+
+        gameContainer.innerHTML += `
+          <div class="history-card" style="border-color:#38bdf8;">
+            <div style="display:flex; justify-content:space-between;">
+              <b>Match #${m.id} (${m.host_name} vs ${m.guest_name || '...'})</b>
+              <span class="status-badge badge-pending">${m.status}</span>
+            </div>
+            ${uploadArea}
+          </div>`;
+      });
     }
 
     // ADMIN DATA & FINANCIAL STATS
     async function loadAdminData() {
-      // 1. Calculate Profit & Stats
       const { data: allMatches } = await _supabase.from('matches').select('*').eq('status', 'completed');
       const { data: allDeps } = await _supabase.from('deposits').select('*').eq('status', 'approved');
       const { data: allWits } = await _supabase.from('withdrawals').select('*').eq('status', 'approved');
@@ -747,26 +732,7 @@
       document.getElementById('statDeposits').innerText = `Rs. ${totalDepSum}`;
       document.getElementById('statWithdraws').innerText = `Rs. ${totalWitSum}`;
 
-      // 2. Disputed Matches
-      const { data: disputes } = await _supabase.from('matches').select('*').eq('status', 'disputed');
-      const dispContainer = document.getElementById('adminDispiteList'); dispContainer.innerHTML = '';
-
-      if(!disputes || disputes.length === 0) { dispContainer.innerHTML = 'No disputed matches.'; } 
-      else {
-        disputes.forEach(m => {
-          dispContainer.innerHTML += `
-            <div class="req-item" style="border-color:#ef4444;">
-              <div>Match #${m.id} - Host: <b>${m.host_name}</b> vs Guest: <b>${m.guest_name}</b></div>
-              <div>Host Claims: ${m.host_score} | Opponent Claims: ${m.guest_score}</div>
-              <div class="action-row">
-                <button class="accept-btn" onclick="resolveDispute(${m.id}, '${m.host_phone}', ${m.entry_fee})">Host Won (${m.host_name})</button>
-                <button class="accept-btn" style="background:#38bdf8;" onclick="resolveDispute(${m.id}, '${m.guest_phone}', ${m.entry_fee})">Guest Won (${m.guest_name})</button>
-              </div>
-            </div>`;
-        });
-      }
-
-      // 3. Pending Deposits
+      // PROBLEM 1 FIX: PENDING DEPOSITS ONLY (REJECTED ONES FILTERED OUT)
       const { data: deposits } = await _supabase.from('deposits').select('*').eq('status', 'pending');
       const depContainer = document.getElementById('adminDepositList'); depContainer.innerHTML = '';
 
@@ -774,7 +740,7 @@
       else {
         deposits.forEach(d => {
           depContainer.innerHTML += `
-            <div class="req-item">
+            <div class="req-item" id="dep-item-${d.id}">
               <div><b>${d.user_name}</b> (${d.user_phone}) - Rs. ${d.amount}</div>
               <div>Ref Code: ${d.ref}</div>
               ${d.proof_img ? `<img src="${d.proof_img}" style="width:100%; max-height:150px; object-fit:contain; margin-top:5px; border-radius:4px;">` : ''}
@@ -786,7 +752,6 @@
         });
       }
 
-      // 4. Pending Withdrawals
       const { data: withdrawals } = await _supabase.from('withdrawals').select('*').eq('status', 'pending');
       const witContainer = document.getElementById('adminWithdrawList'); witContainer.innerHTML = '';
 
@@ -794,7 +759,7 @@
       else {
         withdrawals.forEach(w => {
           witContainer.innerHTML += `
-            <div class="req-item">
+            <div class="req-item" id="wit-item-${w.id}">
               <div><b>${w.user_name}</b> - Rs. ${w.amount} via <b>${w.method}</b> (${w.number})</div>
               <div class="action-row">
                 <button class="accept-btn" onclick="approveWithdraw(${w.id})">Mark Paid</button>
@@ -805,38 +770,30 @@
       }
     }
 
-    // Dispute Resolver
-    async function resolveDispute(matchId, winnerPhone, entryFee) {
-      const prizePool = entryFee * 2 * 0.90;
-      const { data: winUser } = await _supabase.from('users').select('balance').eq('phone', winnerPhone).single();
-      if(winUser) {
-        await _supabase.from('users').update({ balance: winUser.balance + prizePool }).eq('phone', winnerPhone);
-      }
-      await _supabase.from('matches').update({ status: 'completed', winner_phone: winnerPhone }).eq('id', matchId);
-      alert("Dispute Resolved & Winner Paid!");
-      loadAdminData();
-    }
-
     async function approveDeposit(depId, userPhone, rawAmount) {
       const netAmount = rawAmount - 2;
       const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
       if(u) {
         await _supabase.from('users').update({ balance: u.balance + netAmount }).eq('phone', userPhone);
         await _supabase.from('deposits').update({ status: 'approved' }).eq('id', depId);
+        document.getElementById(`dep-item-${depId}`)?.remove();
         alert(`Deposit Approved!`); loadAdminData();
       }
     }
 
+    // PROBLEM 1 FIX: UI REMOVAL ON REJECT
     async function rejectDeposit(depId) {
       const choice = prompt("Select Reason (1: Fake Ref, 2: Payment Not Received, 3: Insufficient Fee):");
       if(choice) {
         await _supabase.from('deposits').update({ status: 'rejected', reason: DEPOSIT_REJECT_REASONS[parseInt(choice)-1] || "Rejected" }).eq('id', depId);
+        document.getElementById(`dep-item-${depId}`)?.remove();
         loadAdminData();
       }
     }
 
     async function approveWithdraw(witId) {
       await _supabase.from('withdrawals').update({ status: 'approved' }).eq('id', witId);
+      document.getElementById(`wit-item-${witId}`)?.remove();
       alert("Marked Paid!"); loadAdminData();
     }
 
@@ -846,11 +803,11 @@
         const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
         if(u) await _supabase.from('users').update({ balance: u.balance + amount }).eq('phone', userPhone);
         await _supabase.from('withdrawals').update({ status: 'rejected', reason: WITHDRAW_REJECT_REASONS[parseInt(choice)-1] || "Rejected" }).eq('id', witId);
+        document.getElementById(`wit-item-${witId}`)?.remove();
         alert("Refunded & Rejected!"); loadAdminData();
       }
     }
 
-    // Realtime Sync & Audio Alert
     function subscribeRealtime() {
       _supabase.channel('schema-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, () => {
