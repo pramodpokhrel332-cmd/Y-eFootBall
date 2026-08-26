@@ -161,7 +161,7 @@
         <h2>⚽ Create Custom Match</h2>
         <form id="createMatchForm">
           <label>Tournament / Match Name:</label>
-          <input type="text" id="matchName" placeholder="e.g. Champion Cup 1v1" required>
+          <input type="text" id="matchName" placeholder="e.g. Sunday Clash Cup / Champion 1v1" required>
 
           <label>Entry Fee Per Player (Min Rs. 17):</label>
           <input type="number" id="entryFee" min="17" value="17" required oninput="calculatePool()">
@@ -301,6 +301,7 @@
         <button class="close-modal-btn" onclick="closeRulesModal()">X</button>
       </div>
       <ul class="rule-list">
+        <li><b>🏆 Tournament Naming Rule:</b> Host ले Match बनाउँदा उपयुक्त र सभ्य Tournament Name राख्नुपर्छ। गालीगलौज वा आपत्तिजनक नाम राखिएमा Match Auto-Cancel हुनेछ।</li>
         <li><b>⚽ Match Rules:</b> Host ले Match Accept गरेपछि १० मिनेटभित्र Room ID र Password हालिसक्नुपर्छ। Match सुरु भएको ३० मिनेटपछि Auto-Remove हुन्छ।</li>
         <li><b>🚫 Fair Play Policy:</b> Match को बीचमा जानी-जानी Network Disconnect गर्ने, Hack/Cheat प्रयोग गर्ने वा अर्काको Owner ID प्रयोग गर्ने Player लाई सिधै Ban गरिनेछ र Money Loss मानिनेछ।</li>
         <li><b>💳 Deposit Policy:</b> Deposit गर्दा सधैं सही Transaction Ref Code र Clear Screenshot Upload गर्नुपर्छ। प्रति Deposit <b>Rs. 2 Fee</b> काटिनेछ। झुटो Ref Code पठाएमा Account Permanent Block हुन सक्छ।</li>
@@ -484,7 +485,7 @@
         currentUser.balance = newBal;
         document.getElementById('userBalance').innerText = newBal;
 
-        alert("✅ Tournament Published!"); 
+        alert("✅ Tournament Published Successfully!"); 
         this.reset(); 
         loadMatches(); 
       }
