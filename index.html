@@ -654,6 +654,8 @@
       const container = document.getElementById('requestsList'); container.innerHTML = '';
       if(!matches) return;
 
+      const now = new Date().getTime();
+
       matches.forEach(m => {
         if (m.status === 'completed') return;
 
@@ -685,8 +687,15 @@
             if (m.room_id && m.room_pass) {
               hostContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
               
+              const startTime = new Date(m.match_time).getTime();
+              const fiveMinsAfterStart = startTime + (5 * 60 * 1000); // Start Time + 5 Mins
+
               if (m.result_status === 'pending') {
                 hostContent += `<p style="color:#f59e0b; font-size:12px; margin-top:8px; text-align:center;">⏳ Result submitted! Waiting for Admin verification...</p>`;
+              } else if (now < fiveMinsAfterStart) {
+                const remainingSecs = Math.ceil((fiveMinsAfterStart - now) / 1000);
+                const remainingMins = Math.ceil(remainingSecs / 60);
+                hostContent += `<p style="color:#38bdf8; font-size:12px; margin-top:10px; text-align:center; font-weight:bold;">🎮 Match in progress... Result upload unlocks in ~${remainingMins} min(s).</p>`;
               } else {
                 hostContent += `<button class="primary-btn" style="margin-top:10px; background:#f59e0b; color:#000;" onclick="submitMatchResult(${m.id}, '${m.host_phone}', '${m.guest_phone}')">📸 Submit Match Result Screenshot</button>`;
               }
