@@ -78,7 +78,6 @@
     <p class="tagline">Play 1v1 eFootball & Earn Cash</p>
   </header>
 
-  <!-- Login/Register Screen -->
   <div id="authScreen" class="auth-box">
     <div class="auth-toggle">
       <button id="loginTabBtn" class="active" onclick="toggleAuth('login')">Login</button>
@@ -108,7 +107,6 @@
     </form>
   </div>
 
-  <!-- Dashboard Main Screen -->
   <div id="mainDashboard" style="display: none;">
     <div class="user-bar">
       <div>
@@ -141,7 +139,6 @@
       </div>
     </div>
 
-    <!-- Arena Page -->
     <div id="arena" class="page active">
       <div id="latestNewsHeaderBox"></div>
 
@@ -180,7 +177,6 @@
       </div>
     </div>
 
-    <!-- NEWS PAGE -->
     <div id="news" class="page">
       <div class="card" style="border-color: #eab308;">
         <h2 style="color: #fde047;">📢 Admin Announcements</h2>
@@ -188,7 +184,6 @@
       </div>
     </div>
 
-    <!-- Requests Page -->
     <div id="requests" class="page">
       <div class="card" style="border-color: #38bdf8;">
         <h2 style="color: #38bdf8;">📩 Joined Matches & Room Credentials</h2>
@@ -196,7 +191,6 @@
       </div>
     </div>
 
-    <!-- History Tab (Player View - Last 7 Days) -->
     <div id="history" class="page">
       <div class="card" style="border-color: #38bdf8;">
         <h2>📊 Player History (Last 7 Days)</h2>
@@ -204,7 +198,6 @@
       </div>
     </div>
 
-    <!-- Deposit Page (Rs. 2 Fee) -->
     <div id="deposit" class="page">
       <div class="card" style="border-color: #22c55e;">
         <h2 style="color: #22c55e;">💳 Deposit Balance (Rs. 2 Fee)</h2>
@@ -231,7 +224,6 @@
       </div>
     </div>
 
-    <!-- Withdraw Page (35% Win Balance + Rs 5 Fee) -->
     <div id="withdraw" class="page">
       <div class="card" style="border-color: #ef4444;">
         <h2 style="color: #ef4444;">💸 Withdraw Funds (Rs. 5 Fee)</h2>
@@ -255,7 +247,6 @@
       </div>
     </div>
 
-    <!-- Admin Page -->
     <div id="admin" class="page">
       <div class="card" style="border-color: #eab308;">
         <h2>📢 Post Announcement</h2>
@@ -393,7 +384,6 @@
       document.getElementById('winnerPrize').innerText = `Rs. ${(fee * 2 * 0.9).toFixed(1)}`;
     }
 
-    // CREATE MATCH
     document.getElementById('createMatchForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnPublishMatch');
@@ -406,7 +396,7 @@
 
       const formattedTime = new Date(mTimeInput).toISOString();
 
-      const { error } = await _supabase.from('matches').insert([{ 
+      const { data, error } = await _supabase.from('matches').insert([{ 
         host_name: currentUser.name, 
         host_owner_id: currentUser.owner_id, 
         host_phone: String(currentUser.phone), 
@@ -414,7 +404,7 @@
         match_time: formattedTime,
         status: 'open',
         requests: [] 
-      }]);
+      }]).select();
 
       if (error) {
         alert("❌ Error: " + error.message);
@@ -431,7 +421,6 @@
       btn.disabled = false;
     });
 
-    // SEND JOIN REQUEST
     async function sendJoinRequest(matchId) {
       const { data: m } = await _supabase.from('matches').select('*').eq('id', matchId).single();
       if(!m) return;
@@ -461,7 +450,6 @@
       }
     }
 
-    // LOAD MATCHES (Open vs Locked + 30 Mins Auto Hide)
     async function loadMatches() {
       const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false });
       const openContainer = document.getElementById('openMatchList');
@@ -484,7 +472,6 @@
 
         if(isLocked) {
           const lockedTime = new Date(m.updated_at || m.created_at).getTime();
-          // 30 Minutes Auto-Delete logic (Hide from UI)
           if(now - lockedTime > 30 * 60 * 1000) return;
 
           lockedContainer.innerHTML += `
@@ -508,7 +495,6 @@
       });
     }
 
-    // HOST ACCEPTS A REQUEST
     async function acceptGuestRequest(matchId, guestPhone, guestName, guestOwnerId, entryFee) {
       if(!confirm(`Accept ${guestName}'s request? Rs. ${entryFee} will be deducted from their balance.`)) return;
 
@@ -606,7 +592,6 @@
       });
     }
 
-    // DEPOSIT SUBMIT (Rs. 2 Fee)
     document.getElementById('depositForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnDepositSubmit');
@@ -616,7 +601,7 @@
       const ref = document.getElementById('depRef').value;
       const screenshot = document.getElementById('depImgPreview').src;
 
-      const netAmount = amount - 2; // Rs. 2 Fee Deduction
+      const netAmount = amount - 2;
 
       const { error } = await _supabase.from('deposits').insert([
         { user_phone: String(currentUser.phone), user_name: currentUser.name, amount: netAmount, raw_amount: amount, ref, proof_img: screenshot, status: 'pending', created_at: new Date().toISOString() }
@@ -630,7 +615,6 @@
       btn.disabled = false;
     });
 
-    // WITHDRAW SUBMIT (35% Win Balance + Rs. 5 Fee)
     document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnWithdrawSubmit');
@@ -641,7 +625,7 @@
       const name = document.getElementById('witName').value;
       const amount = parseFloat(document.getElementById('witAmount').value);
 
-      const minWinRequired = amount * 0.35; // 35% Win Balance Rule
+      const minWinRequired = amount * 0.35;
       const userWinBal = currentUser.win_balance || 0;
 
       if(userWinBal < minWinRequired) {
@@ -652,7 +636,7 @@
 
       if(currentUser.balance < amount) { alert("❌ Insufficient Main Balance!"); btn.disabled = false; return; }
 
-      const netWithdraw = amount - 5; // Rs. 5 Fee Deduction
+      const netWithdraw = amount - 5;
 
       const { error } = await _supabase.from('withdrawals').insert([
         { user_phone: String(currentUser.phone), user_name: currentUser.name, method, number, acc_name: name, amount, net_amount: netWithdraw, status: 'pending', created_at: new Date().toISOString() }
@@ -669,7 +653,6 @@
       btn.disabled = false;
     });
 
-    // ADMIN ANNOUNCEMENTS
     document.getElementById('adminPostNewsForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const title = document.getElementById('newsTitleInput').value.trim();
@@ -695,7 +678,6 @@
       });
     }
 
-    // PLAYER HISTORY (Last 7 Days Only)
     async function loadPlayerHistory() {
       if(!currentUser) return;
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -724,7 +706,6 @@
       });
     }
 
-    // ADMIN GLOBAL DATA & ALL TIME HISTORY
     async function loadAdminData() {
       const { data: deposits, error } = await _supabase
         .from('deposits')
@@ -780,7 +761,6 @@
         });
       }
 
-      // GLOBAL ADMIN HISTORY (All Time)
       const { data: allDeps } = await _supabase.from('deposits').select('*').order('id', { ascending: false });
       const { data: allWits } = await _supabase.from('withdrawals').select('*').order('id', { ascending: false });
 
@@ -851,7 +831,6 @@
       }
     }
 
-    // REALTIME LISTENER
     function subscribeRealtime() {
       _supabase.channel('schema-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, () => {
