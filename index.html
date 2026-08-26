@@ -262,7 +262,7 @@
       <div class="card" style="border-color: #38bdf8;">
         <h2>🛠️ Admin Panel & Global History</h2>
 
-        <h3 style="font-size: 14px; margin-top: 15px; color: #38bdf8;">📜 Global Admin History (All Time)</h3>
+        <h3 style="font-size: 14px; margin-top: 15px; color: #38bdf8;">📜 Global Admin History (Last 30 Days)</h3>
         <div id="adminGlobalHistoryList" style="margin-top: 8px;">Loading global history...</div>
 
         <h3 style="font-size: 14px; margin-top: 25px; color: #22c55e;">📥 Pending Deposits</h3>
@@ -704,41 +704,71 @@
       });
     }
 
+    // Player History: Last 7 Days (Deposits, Withdrawals, & Played Matches)
     async function loadPlayerHistory() {
-      if(!currentUser) return;
+      if (!currentUser) return;
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const txContainer = document.getElementById('playerHistoryList');
+      txContainer.innerHTML = 'Loading history...';
 
       const { data: deps } = await _supabase.from('deposits').select('amount, status, reason, created_at').eq('user_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
       const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason, created_at').eq('user_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
+      
+      const { data: hostMatches } = await _supabase.from('matches').select('*').eq('host_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
+      const { data: guestMatches } = await _supabase.from('matches').select('*').eq('guest_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
 
-      const txContainer = document.getElementById('playerHistoryList'); txContainer.innerHTML = '';
-      let txList = [];
-      if(deps) deps.forEach(d => txList.push({ type: 'Deposit', amount: d.amount, status: d.status, reason: d.reason, date: new Date(d.created_at) }));
-      if(wits) wits.forEach(w => txList.push({ type: 'Withdrawal', amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at) }));
+      let historyList = [];
 
-      if (txList.length === 0) {
-        txContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No transaction history in the last 7 days.</p>';
+      if (deps) deps.forEach(d => historyList.push({ category: 'financial', type: '💳 Deposit', amount: d.amount, status: d.status, reason: d.reason, date: new Date(d.created_at) }));
+      if (wits) wits.forEach(w => historyList.push({ category: 'financial', type: '💸 Withdrawal', amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at) }));
+
+      const allMatches = [...(hostMatches || []), ...(guestMatches || [])];
+      const uniqueMatches = Array.from(new Set(allMatches.map(m => m.id))).map(id => allMatches.find(m => m.id === id));
+
+      uniqueMatches.forEach(m => {
+        const isHost = String(m.host_phone) === String(currentUser.phone);
+        const opponent = isHost ? (m.guest_name || 'Waiting...') : m.host_name;
+        historyList.push({
+          category: 'match',
+          type: `⚽ Match #${m.id} vs ${opponent}`,
+          amount: m.entry_fee,
+          status: m.status,
+          date: new Date(m.created_at)
+        });
+      });
+
+      txContainer.innerHTML = '';
+
+      if (historyList.length === 0) {
+        txContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No activity in the last 7 days.</p>';
         return;
       }
 
-      txList.sort((a,b) => b.date - a.date).forEach(t => {
-        let badge = t.status === 'approved' ? 'badge-approved' : (t.status === 'rejected' ? 'badge-rejected' : 'badge-pending');
+      historyList.sort((a, b) => b.date - a.date).forEach(item => {
+        let badgeClass = item.status === 'approved' || item.status === 'full' ? 'badge-approved' : (item.status === 'rejected' ? 'badge-rejected' : 'badge-pending');
+        
         txContainer.innerHTML += `
           <div class="history-card">
-            <div style="display:flex; justify-content:space-between;"><b>${t.type}: Rs. ${t.amount}</b><span class="status-badge ${badge}">${t.status}</span></div>
-            <div style="font-size:10px; color:#94a3b8; margin-top:4px;">Date: ${t.date.toLocaleDateString()}</div>
-            ${t.reason ? `<div style="color:#ef4444; font-size:11px; margin-top:4px;">Reason: ${t.reason}</div>` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <b>${item.type}</b>
+              <span class="status-badge ${badgeClass}">${item.status}</span>
+            </div>
+            <div style="font-size:11px; color:#38bdf8; margin-top:3px;">
+              ${item.category === 'match' ? 'Entry Fee' : 'Amount'}: Rs. ${item.amount}
+            </div>
+            <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
+              Date: ${item.date.toLocaleString()}
+            </div>
+            ${item.reason ? `<div style="color:#ef4444; font-size:11px; margin-top:4px;">Reason: ${item.reason}</div>` : ''}
           </div>`;
       });
     }
 
+    // Admin Panel: Last 30 Days Global History (Deposit + Withdrawal)
     async function loadAdminData() {
-      const { data: deposits, error } = await _supabase
-        .from('deposits')
-        .select('id, user_name, user_phone, amount, ref, status')
-        .eq('status', 'pending')
-        .order('id', { ascending: false });
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+      const { data: deposits, error } = await _supabase.from('deposits').select('*').eq('status', 'pending').order('id', { ascending: false });
       const depContainer = document.getElementById('adminDepositList'); 
       depContainer.innerHTML = '';
 
@@ -762,12 +792,7 @@
         });
       }
 
-      const { data: withdrawals } = await _supabase
-        .from('withdrawals')
-        .select('id, user_name, user_phone, method, number, acc_name, amount, status')
-        .eq('status', 'pending')
-        .order('id', { ascending: false });
-
+      const { data: withdrawals } = await _supabase.from('withdrawals').select('*').eq('status', 'pending').order('id', { ascending: false });
       const witContainer = document.getElementById('adminWithdrawList'); 
       witContainer.innerHTML = '';
 
@@ -787,23 +812,30 @@
         });
       }
 
-      const { data: allDeps } = await _supabase.from('deposits').select('*').order('id', { ascending: false });
-      const { data: allWits } = await _supabase.from('withdrawals').select('*').order('id', { ascending: false });
+      const { data: allDeps } = await _supabase.from('deposits').select('*').gte('created_at', thirtyDaysAgo).order('id', { ascending: false });
+      const { data: allWits } = await _supabase.from('withdrawals').select('*').gte('created_at', thirtyDaysAgo).order('id', { ascending: false });
 
       const adminHistContainer = document.getElementById('adminGlobalHistoryList');
       adminHistContainer.innerHTML = '';
 
       let globalList = [];
-      if(allDeps) allDeps.forEach(d => globalList.push({ type: 'Deposit', user: d.user_name, phone: d.user_phone, amount: d.amount, status: d.status }));
-      if(allWits) allWits.forEach(w => globalList.push({ type: 'Withdrawal', user: w.user_name, phone: w.user_phone, amount: w.amount, status: w.status }));
+      if(allDeps) allDeps.forEach(d => globalList.push({ type: '💳 Deposit', user: d.user_name, phone: d.user_phone, amount: d.amount, status: d.status, reason: d.reason, date: new Date(d.created_at) }));
+      if(allWits) allWits.forEach(w => globalList.push({ type: '💸 Withdrawal', user: w.user_name, phone: w.user_phone, amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at) }));
 
       if(globalList.length === 0) {
-        adminHistContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No global transactions yet.</p>';
+        adminHistContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No transactions in last 30 days.</p>';
       } else {
-        globalList.forEach(g => {
+        globalList.sort((a,b) => b.date - a.date).forEach(g => {
+          let badgeClass = g.status === 'approved' ? 'badge-approved' : (g.status === 'rejected' ? 'badge-rejected' : 'badge-pending');
           adminHistContainer.innerHTML += `
             <div class="history-card">
-              <b>${g.user} (${g.phone})</b> - ${g.type}: Rs. ${g.amount} | Status: <b>${g.status}</b>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b>${g.user} (${g.phone})</b>
+                <span class="status-badge ${badgeClass}">${g.status}</span>
+              </div>
+              <div style="font-size:12px; margin-top:2px;">${g.type}: <b style="color:#22c55e;">Rs. ${g.amount}</b></div>
+              <div style="font-size:10px; color:#94a3b8; margin-top:2px;">Date: ${g.date.toLocaleString()}</div>
+              ${g.reason ? `<div style="color:#ef4444; font-size:10px; margin-top:2px;">Reason: ${g.reason}</div>` : ''}
             </div>`;
         });
       }
