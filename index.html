@@ -3,127 +3,59 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Y'eFOOTBALL - Tournament & eSports Hub</title>
+  <title>Y'eFOOTBALL - 1v1 Stake Arena</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root {
-      --bg-color: #0f172a;
-      --card-bg: #1e293b;
-      --accent: #38bdf8;
-      --accent-hover: #0284c7;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --danger: #ef4444;
-      --success: #22c55e;
-      --warning: #eab308;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: var(--bg-color); color: var(--text); padding-bottom: 60px; }
-
-    header {
-      background: linear-gradient(135deg, #1e1b4b, #0f172a);
-      padding: 20px;
-      text-align: center;
-      border-bottom: 2px solid var(--accent);
-    }
-    header h1 { color: var(--accent); font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
-    header p.tagline { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
-
-    .rules-btn {
-      margin-top: 10px;
-      background: var(--accent);
-      color: #000;
-      border: none;
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-weight: bold;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .container { max-width: 600px; margin: 0 auto; padding: 15px; }
-
-    .card {
-      background: var(--card-bg);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 15px;
-      border: 1px solid #334155;
-    }
-    .card-title { font-size: 16px; font-weight: bold; color: var(--accent); margin-bottom: 12px; }
-
-    .form-group { margin-bottom: 12px; }
-    .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-    .form-group input, .form-group select {
-      width: 100%;
-      padding: 10px;
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 14px;
-    }
-
-    .primary-btn {
-      width: 100%;
-      background: var(--accent);
-      color: #000;
-      font-weight: bold;
-      padding: 12px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    .primary-btn:disabled { background: #475569; cursor: not-allowed; }
-
-    .status-msg {
-      display: none;
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      line-height: 1.4;
-    }
-    .status-msg.error { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: #fca5a5; }
-    .status-msg.success { background: rgba(34, 197, 94, 0.15); border: 1px solid var(--success); color: #86efac; }
-
-    .match-item {
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
-    }
-
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85);
-      z-index: 2000;
-      overflow-y: auto;
-      padding: 20px;
-    }
-    .modal-content {
-      max-width: 500px;
-      margin: 30px auto;
-      background: #1e293b;
-      border: 1px solid var(--accent);
-      border-radius: 12px;
-      padding: 20px;
-      color: #fff;
-      position: relative;
-    }
-    .close-btn {
-      position: absolute;
-      top: 12px; right: 15px;
-      background: var(--danger);
-      border: none; color: #fff;
-      padding: 4px 10px; border-radius: 6px;
-      cursor: pointer;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0b0f19; color: #fff; padding: 15px; padding-bottom: 80px; }
+    header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #1e293b; padding-bottom: 10px; }
+    h1 { color: #38bdf8; font-size: 26px; font-weight: 800; }
+    .tagline { color: #94a3b8; font-size: 12px; margin-top: 4px; }
+    .auth-box { max-width: 400px; margin: 20px auto; background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #38bdf8; }
+    .auth-toggle { display: flex; gap: 10px; margin-bottom: 15px; }
+    .auth-toggle button { flex: 1; padding: 8px; background: #0f172a; border: none; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    .auth-toggle button.active { background: #38bdf8; color: #000; }
+    .tab-nav { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; }
+    .tab-btn { flex: 1; padding: 10px; background: #1e293b; border: 1px solid #334155; color: #fff; font-weight: bold; border-radius: 8px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+    .tab-btn.active { background: #38bdf8; color: #000; }
+    .user-bar { background: #0f172a; padding: 10px 14px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
+    .menu-btn { background: #38bdf8; color: #000; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; }
+    .wallet-card { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid #38bdf8; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .wallet-bal { font-size: 22px; font-weight: bold; color: #22c55e; }
+    .wallet-actions { display: flex; gap: 6px; }
+    .wallet-btn { background: #38bdf8; border: none; padding: 8px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #000; font-size: 12px; }
+    .withdraw-btn-head { background: #ef4444; color: #fff; }
+    .card { background: #1e293b; padding: 18px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; }
+    h2 { font-size: 18px; color: #38bdf8; margin-bottom: 12px; }
+    label { display: block; font-size: 13px; color: #cbd5e1; margin-top: 10px; }
+    input, select, textarea { width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 14px; }
+    .pool-calc { background: #0f172a; padding: 10px; border-radius: 6px; margin-top: 12px; font-size: 13px; border: 1px solid #334155; }
+    button.primary-btn { width: 100%; padding: 12px; background: #22c55e; border: none; color: white; font-weight: bold; border-radius: 8px; margin-top: 15px; cursor: pointer; font-size: 15px; }
+    button.primary-btn:disabled { background: #64748b; cursor: not-allowed; }
+    .match-item { background: #0f172a; border-left: 4px solid #38bdf8; padding: 12px; border-radius: 6px; margin-top: 10px; }
+    .match-header { display: flex; justify-content: space-between; font-weight: bold; }
+    .match-info { font-size: 12px; color: #94a3b8; margin-top: 5px; }
+    .join-btn { background: #22c55e; padding: 8px 12px; font-size: 12px; margin-top: 8px; border-radius: 4px; border: none; color: #fff; font-weight: bold; width: 100%; cursor: pointer; }
+    .action-row { display: flex; gap: 8px; margin-top: 8px; }
+    .accept-btn { flex: 2; background: #22c55e; color: #fff; padding: 8px; font-size: 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
+    .reject-btn { flex: 1; background: #ef4444; color: #fff; padding: 8px; font-size: 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .payment-box { background: #0f172a; border: 1px dashed #38bdf8; padding: 12px; border-radius: 8px; margin-top: 10px; text-align: center; }
+    .req-item { background: #0f172a; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #334155; }
+    .whatsapp-btn { position: fixed; bottom: 20px; right: 20px; background-color: #25d366; color: white; border-radius: 50px; padding: 12px 18px; font-size: 14px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.5); text-decoration: none; display: flex; align-items: center; gap: 8px; z-index: 1000; }
+    .code-box { background: #1e293b; color: #22c55e; padding: 8px; border-radius: 4px; border: 1px dashed #22c55e; margin-top: 8px; font-family: monospace; font-weight: bold; text-align: center; font-size: 14px; }
+    .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+    .badge-pending { background: #f59e0b; color: #000; }
+    .badge-approved { background: #22c55e; color: #000; }
+    .badge-rejected { background: #ef4444; color: #fff; }
+    .history-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 12px; }
+    .news-banner { background: linear-gradient(135deg, #0284c7, #1e1b4b); border: 1px solid #38bdf8; border-radius: 12px; padding: 14px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2); }
+    .news-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .news-icon { font-size: 24px; background: rgba(255,255,255,0.1); padding: 6px; border-radius: 8px; }
+    .news-title { font-size: 15px; font-weight: bold; color: #f0f9ff; }
+    .news-body { font-size: 13px; color: #e0f2fe; line-height: 1.4; margin-top: 4px; }
+    .img-preview { width: 100%; max-height: 200px; object-fit: contain; border-radius: 6px; margin-top: 8px; border: 1px solid #334155; display: none; }
   </style>
 </head>
 <body>
@@ -131,161 +63,712 @@
   <header>
     <h1>Y'eFOOTBALL</h1>
     <p class="tagline">Play 1v1 eFootball & Earn Cash</p>
-    <button class="rules-btn" onclick="toggleRulesModal(true)">Tournament Rules & Policies</button>
   </header>
 
-  <div class="container">
-    
-    <!-- 1. USER WALLET -->
-    <div class="card">
-      <div class="card-title">Player Wallet</div>
-      <div style="background: #0f172a; padding: 18px; border-radius: 8px; text-align: center; border: 1px solid #334155;">
-        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Total Balance (Deposit + Winning)</div>
-        <div style="font-weight: bold; font-size: 26px; color: #fff;" id="depositBal">Rs. 0</div>
-        <div style="font-size: 12px; color: var(--success); margin-top: 8px; padding-top: 8px; border-top: 1px dashed #334155;">
-          Winning Balance: <span id="winningBal" style="font-weight: bold; font-size: 14px;">Rs. 0</span>
-        </div>
+  <!-- Login/Register Screen -->
+  <div id="authScreen" class="auth-box">
+    <div class="auth-toggle">
+      <button id="loginTabBtn" class="active" onclick="toggleAuth('login')">Login</button>
+      <button id="registerTabBtn" onclick="toggleAuth('register')">Register</button>
+    </div>
+
+    <form id="loginForm">
+      <h2>🔑 Account Login</h2>
+      <label>Mobile Number:</label>
+      <input type="tel" id="loginPhone" placeholder="98XXXXXXXX" required>
+      <label>Password:</label>
+      <input type="password" id="loginPass" placeholder="••••••••" required>
+      <button type="submit" class="primary-btn" style="background:#38bdf8; color:#000;">Login to Arena</button>
+    </form>
+
+    <form id="registerForm" style="display: none;">
+      <h2>📝 Create Account</h2>
+      <label>eFootball In-Game Name (IGN):</label>
+      <input type="text" id="regName" placeholder="e.g. Paras_Pro" required>
+      <label>eFootball Owner ID:</label>
+      <input type="text" id="regOwnerId" placeholder="123-456-789" required>
+      <label>Mobile / eSewa Number:</label>
+      <input type="tel" id="regPhone" placeholder="98XXXXXXXX" required>
+      <label>Create Password:</label>
+      <input type="password" id="regPass" placeholder="••••••••" required>
+      <button type="submit" class="primary-btn">Register & Get Started</button>
+    </form>
+  </div>
+
+  <!-- Dashboard Main Screen -->
+  <div id="mainDashboard" style="display: none;">
+    <div class="user-bar">
+      <div>
+        <span style="font-size: 11px; color: #94a3b8;">Player:</span>
+        <b id="displayPlayerName" style="color: #38bdf8; font-size: 13px;">-</b>
+      </div>
+      <button class="menu-btn" onclick="switchTab('news')">📢 News & Offers</button>
+      <button style="background: #ef4444; border: none; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight:bold;" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('arena')">Arena</button>
+      <button class="tab-btn" onclick="switchTab('news')" style="border-color:#eab308; color:#fde047;">📢 News</button>
+      <button class="tab-btn" onclick="switchTab('requests')" style="border-color:#38bdf8;">🔔 Requests</button>
+      <button class="tab-btn" onclick="switchTab('history')">📊 History</button>
+      <button class="tab-btn" onclick="switchTab('deposit')">Deposit</button>
+      <button class="tab-btn" onclick="switchTab('withdraw')">Withdraw</button>
+      <button class="tab-btn" style="border-color:#ef4444;" onclick="openAdminPanel()">Admin Panel</button>
+    </div>
+
+    <div class="wallet-card">
+      <div>
+        <div style="font-size: 11px; color: #94a3b8;">My Balance</div>
+        <div class="wallet-bal">Rs. <span id="userBalance">0</span></div>
+      </div>
+      <div class="wallet-actions">
+        <button class="wallet-btn" onclick="switchTab('deposit')">+ Deposit</button>
+        <button class="wallet-btn withdraw-btn-head" onclick="switchTab('withdraw')">- Withdraw</button>
       </div>
     </div>
 
-    <!-- 2. DEPOSIT SECTION (QR & Transaction Code) -->
-    <div class="card">
-      <div class="card-title">Deposit Money</div>
-      <div style="text-align: center; margin-bottom: 12px;">
-        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Scan QR & Pay (eSewa / Khalti / IMEPay)</p>
-        <img src="YOUR_QR_IMAGE_URL.jpg" alt="QR Code" style="width: 160px; height: 160px; border-radius: 8px; border: 1px solid var(--accent);">
+    <!-- Arena Page -->
+    <div id="arena" class="page active">
+      <div id="latestNewsHeaderBox"></div>
+
+      <div class="card">
+        <h2>⚽ Create Custom Match</h2>
+        <form id="createMatchForm">
+          <label>Entry Fee Per Player (Min Rs. 17):</label>
+          <input type="number" id="entryFee" min="17" value="17" required oninput="calculatePool()">
+
+          <label>Match Start Time:</label>
+          <input type="datetime-local" id="matchTime" required>
+
+          <div class="pool-calc">
+            <p>Total Pool: <span id="totalPool" style="color:#fff; font-weight:bold;">Rs. 34</span></p>
+            <p>Winner Prize (90%): <span id="winnerPrize" style="color:#22c55e; font-weight:bold;">Rs. 30.6</span></p>
+          </div>
+
+          <button type="submit" id="btnPublishMatch" class="primary-btn">Publish Challenge (Pay Fee)</button>
+        </form>
       </div>
-      <form id="depositForm">
-        <div class="form-group">
-          <label>Deposit Amount (Rs.):</label>
-          <input type="number" id="depAmount" placeholder="Min Rs. 20" required>
-        </div>
-        <div class="form-group">
-          <label>Transaction ID / Remark:</label>
-          <input type="text" id="depTrx" placeholder="Enter Trx ID or Payment Name" required>
-        </div>
-        <button type="submit" id="depBtn" class="primary-btn">Submit Deposit Request</button>
-      </form>
-      <div id="depStatus" class="status-msg"></div>
-    </div>
 
-    <!-- 3. CREATE MATCH -->
-    <div class="card">
-      <div class="card-title">Create Tournament / Challenge</div>
-      <form id="createMatchForm">
-        <div class="form-group">
-          <label>Match Title:</label>
-          <input type="text" id="matchTitle" placeholder="e.g. 1v1 Friendly" required>
-        </div>
-        <div class="form-group">
-          <label>Entry Fee (Min Rs. 17):</label>
-          <input type="number" id="entryFee" min="17" placeholder="17" required>
-        </div>
-        <button type="submit" id="createMatchBtn" class="primary-btn">Publish Challenge</button>
-      </form>
-    </div>
-
-    <!-- 4. OPEN CHALLENGES LIST -->
-    <div class="card">
-      <div class="card-title">Open Challenges</div>
-      <div id="openMatchesList">
-        <p style="font-size: 12px; color: var(--text-muted);">Loading matches...</p>
+      <div class="card">
+        <h2>🔥 Live Open Matches</h2>
+        <div id="matchList">Loading live matches...</div>
       </div>
     </div>
 
-    <!-- 5. WITHDRAW SECTION -->
-    <div class="card">
-      <div class="card-title">Withdraw Winnings</div>
-      <form id="withdrawForm">
-        <div class="form-group">
-          <label>Withdraw Amount (Rs.):</label>
-          <input type="number" id="witAmount" placeholder="Enter amount to withdraw" required>
+    <!-- NEWS PAGE -->
+    <div id="news" class="page">
+      <div class="card" style="border-color: #eab308;">
+        <h2 style="color: #fde047;">📢 Admin Announcements</h2>
+        <div id="fullNewsList">Loading news...</div>
+      </div>
+    </div>
+
+    <!-- Requests Page -->
+    <div id="requests" class="page">
+      <div class="card" style="border-color: #38bdf8;">
+        <h2 style="color: #38bdf8;">📩 Joined Matches & Room Credentials</h2>
+        <div id="requestsList">Loading match requests...</div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div id="history" class="page">
+      <div class="card" style="border-color: #38bdf8;">
+        <h2>💳 Wallet Transactions Status</h2>
+        <div id="transactionHistoryList">Loading transaction status...</div>
+      </div>
+    </div>
+
+    <!-- Deposit Page -->
+    <div id="deposit" class="page">
+      <div class="card" style="border-color: #22c55e;">
+        <h2 style="color: #22c55e;">💳 Deposit Balance</h2>
+        <div class="payment-box">
+          <p style="color: #38bdf8; font-weight: bold; font-size: 15px;">eSewa Details</p>
+          <p>eSewa ID: <b style="color: #22c55e;">9847430292</b></p>
+          <p>Name: <b>Paras Pokhrel</b></p>
+          <p style="font-size: 11px; color: #f59e0b; margin-top: 5px;">* Rs. 2 fee deducted per deposit.</p>
         </div>
-        <button type="submit" id="withdrawBtn" class="primary-btn" style="background: var(--success); color: #fff;">Request Withdrawal</button>
-      </form>
 
-      <div id="withdrawStatus" class="status-msg"></div>
+        <form id="depositForm" style="margin-top: 15px;">
+          <label>Amount (Min NPR 25):</label>
+          <input type="number" id="depAmount" placeholder="e.g. 100" min="25" required>
 
-      <div style="margin-top: 12px; background: #0f172a; padding: 10px; border-radius: 6px; border-left: 3px solid var(--warning); font-size: 11px; color: #cbd5e1;">
-        Note: जितेकै रकम (Winning Balance) १००% सोझै निकाल्न पाइनेछ। Deposit रकम पनि मिसाएर झिक्न खोजेमा निकालिने कुल रकमको कम्तिमा <b>३५% Winning Balance</b> हुनुपर्नेछ।
+          <label>eSewa Transaction Ref Code:</label>
+          <input type="text" id="depRef" placeholder="Transaction ID" required>
+
+          <label>📷 Upload Payment Screenshot:</label>
+          <input type="file" id="depFile" accept="image/*" required onchange="previewImg(this, 'depImgPreview')">
+          <img id="depImgPreview" class="img-preview" alt="Proof Preview">
+
+          <button type="submit" id="btnDepositSubmit" class="primary-btn">Submit Deposit Proof</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Withdraw Page -->
+    <div id="withdraw" class="page">
+      <div class="card" style="border-color: #ef4444;">
+        <h2 style="color: #ef4444;">💸 Withdraw Funds</h2>
+        <form id="withdrawForm">
+          <label>Method:</label>
+          <select id="witMethod"><option value="eSewa">eSewa</option><option value="Khalti">Khalti</option></select>
+
+          <label>Account Number:</label>
+          <input type="tel" id="witNumber" placeholder="98XXXXXXXX" required>
+
+          <label>Account Holder Name:</label>
+          <input type="text" id="witName" placeholder="Full Name" required>
+
+          <label>Withdraw Amount (Min Rs. 75):</label>
+          <input type="number" id="witAmount" placeholder="e.g. 100" min="75" required>
+
+          <button type="submit" id="btnWithdrawSubmit" class="primary-btn" style="background: #ef4444;">Submit Withdraw</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Admin Page -->
+    <div id="admin" class="page">
+      <div class="card" style="border-color: #eab308;">
+        <h2>📢 Post Announcement</h2>
+        <form id="adminPostNewsForm">
+          <label>Title:</label>
+          <input type="text" id="newsTitleInput" required>
+          <label>Details:</label>
+          <textarea id="newsContentInput" rows="3" required></textarea>
+          <button type="submit" class="primary-btn" style="background: #eab308; color: #000;">🚀 Publish Announcement</button>
+        </form>
+      </div>
+
+      <div class="card" style="border-color: #38bdf8;">
+        <h2>🛡️ Pending Approvals</h2>
+        <h3 style="font-size: 14px; margin-top: 15px; color: #22c55e;">📥 Deposits</h3>
+        <div id="adminDepositList">Loading...</div>
+
+        <h3 style="font-size: 14px; margin-top: 25px; color: #ef4444;">📤 Withdrawals</h3>
+        <div id="adminWithdrawList">Loading...</div>
       </div>
     </div>
 
   </div>
 
-  <!-- RULES POPUP MODAL -->
-  <div id="rulesModal" class="modal-overlay">
-    <div class="modal-content">
-      <button onclick="toggleRulesModal(false)" class="close-btn">Close</button>
-      <h2 style="color: var(--accent); font-size: 18px; margin-bottom: 12px; text-align: center;">Official Rules & Policies</h2>
-      <div style="font-size: 13px; line-height: 1.6; color: #cbd5e1;">
-        <p style="margin-bottom: 10px;"><b>1. Room ID Limit:</b> Host ले ५-७ मिनेटभित्र Room ID/Pass दिनुपर्छ, नभए Penalty लाग्नेछ।</p>
-        <p style="margin-bottom: 10px;"><b>2. Guest Absence Penalty:</b> Host ले ID दिँदा पनि Guest नआए Entry Fee जफत हुनेछ।</p>
-        <p style="margin-bottom: 10px;"><b>3. 4-Hour Deadline:</b> Match सकिएको ४ घण्टाभित्र Proof नआए Match Void हुनेछ।</p>
-        <p style="margin-bottom: 10px;"><b>4. 35% Win Rule:</b> Deposit रकमसहित मिसाएर निकाल्न कुल रकमको कम्तिमा ३५% Winning Balance हुनु अनिवार्य छ।</p>
-      </div>
-      <button onclick="toggleRulesModal(false)" class="primary-btn" style="margin-top: 15px;">I Agree</button>
-    </div>
-  </div>
+  <a href="https://wa.me/9779847430292" class="whatsapp-btn" target="_blank">💬 WhatsApp Support</a>
 
   <script>
-    const SUPABASE_URL = "YOUR_SUPABASE_URL";
-    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SUPABASE_URL = "https://yyqxdefswgiygjupofxw.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_5hiZ-pPbfM_zLqQXOSnsHA_onITjF4o";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    const ADMIN_PIN = "3029";
     let currentUser = null;
+    let activeTab = 'arena';
 
-    function toggleRulesModal(show) {
-      document.getElementById('rulesModal').style.display = show ? 'block' : 'none';
+    const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Ref Code", "Payment Not Received", "Insufficient Amount", "Duplicate Submission"];
+    const WITHDRAW_REJECT_REASONS = ["Invalid Account Number", "Name Mismatch", "Rule Violated", "Suspicious Activity"];
+
+    function previewImg(input, targetId) {
+      const file = input.files[0];
+      if(file) {
+        const reader = new FileReader();
+        reader.onload = e => { const img = document.getElementById(targetId); img.src = e.target.result; img.style.display = 'block'; };
+        reader.readAsDataURL(file);
+      }
     }
 
-    // WITHDRAWAL LOGIC WITH DOUBLE CLICK PROTECTION
-    document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const btn = document.getElementById('withdrawBtn');
-      const amount = parseFloat(document.getElementById('witAmount').value);
-      const statusBox = document.getElementById('withdrawStatus');
-
-      btn.disabled = true;
-      btn.innerText = "Processing...";
-      statusBox.style.display = 'none';
-
-      try {
-        if (!currentUser) {
-          showStatus("Error: कृपया पहिले Login गर्नुहोस्!", "error");
-          return;
-        }
-
-        const winningBal = currentUser.winning_balance || 0;
-        const depositBal = currentUser.balance || 0;
-        const totalBal = winningBal + depositBal;
-
-        if (amount > totalBal) {
-          showStatus(`Withdrawal Rejected: तिमीसँग पर्याप्त Balance छैन! (Total: Rs. ${totalBal})`, "error");
-          return;
-        }
-
-        if (amount > winningBal) {
-          const requiredWinning = amount * 0.35;
-          if (winningBal < requiredWinning) {
-            showStatus(`Withdrawal Rejected: Deposit मिसाएर Rs. ${amount} निकाल्न कम्तिमा <b>३५% Winning Balance (Rs. ${requiredWinning.toFixed(1)})</b> हुनुपर्छ। तिम्रो Winning Balance Rs. ${winningBal} मात्र छ।`, "error");
-            return;
-          }
-        }
-
-        showStatus(`Withdrawal Requested: Rs. ${amount} को Request पठाइयो।`, "success");
-
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "Request Withdrawal";
+    function toggleAuth(type) {
+      if(type === 'login') {
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('loginTabBtn').classList.add('active');
+        document.getElementById('registerTabBtn').classList.remove('active');
+      } else {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'block';
+        document.getElementById('registerTabBtn').classList.add('active');
+        document.getElementById('loginTabBtn').classList.remove('active');
       }
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const ownerId = document.getElementById('regOwnerId').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      const pass = document.getElementById('regPass').value.trim();
+
+      const { error } = await _supabase.from('users').insert([{ phone, name, owner_id: ownerId, pass, balance: 0 }]);
+      if (error) alert("User Already Exists!");
+      else { alert("✅ Registration Successful! Please Login."); toggleAuth('login'); document.getElementById('loginPhone').value = phone; }
     });
 
-    function showStatus(msg, type) {
-      const statusBox = document.getElementById('withdrawStatus');
-      statusBox.innerHTML = msg;
-      statusBox.className = `status-msg ${type}`;
-      statusBox.style.display = 'block';
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const phone = document.getElementById('loginPhone').value.trim();
+      const pass = document.getElementById('loginPass').value.trim();
+
+      const { data } = await _supabase.from('users').select('*').eq('phone', phone).eq('pass', pass).single();
+      if (data) {
+        currentUser = data;
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('mainDashboard').style.display = 'block';
+        document.getElementById('displayPlayerName').innerText = currentUser.name + " (" + currentUser.owner_id + ")";
+        document.getElementById('userBalance').innerText = currentUser.balance || 0;
+        
+        loadNews(); loadMatches(); subscribeRealtime();
+      } else alert("Invalid Login Credentials!");
+    });
+
+    function logout() { currentUser = null; document.getElementById('mainDashboard').style.display = 'none'; document.getElementById('authScreen').style.display = 'block'; }
+
+    function switchTab(tabId) {
+      activeTab = tabId;
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+
+      if (tabId === 'arena') loadMatches();
+      if (tabId === 'news') loadNews();
+      if (tabId === 'requests') loadRequestsTab();
+      if (tabId === 'history') loadHistoryTab();
+    }
+
+    function openAdminPanel() {
+      const pin = prompt("🔑 Enter Admin PIN:");
+      if (pin === ADMIN_PIN) { switchTab('admin'); loadAdminData(); } 
+      else if (pin !== null) alert("❌ Wrong PIN!");
+    }
+
+    function calculatePool() {
+      const fee = parseFloat(document.getElementById('entryFee').value) || 0;
+      document.getElementById('totalPool').innerText = `Rs. ${(fee * 2).toFixed(1)}`;
+      document.getElementById('winnerPrize').innerText = `Rs. ${(fee * 2 * 0.9).toFixed(1)}`;
+    }
+
+    // MATCH CREATE
+    document.getElementById('createMatchForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnPublishMatch');
+      btn.disabled = true;
+
+      const fee = parseFloat(document.getElementById('entryFee').value);
+      const mTimeInput = document.getElementById('matchTime').value;
+
+      if(currentUser.balance < fee) { alert(`❌ Insufficient Balance!`); btn.disabled = false; return; }
+
+      const formattedTime = new Date(mTimeInput).toISOString();
+
+      const { error } = await _supabase.from('matches').insert([{ 
+        host_name: currentUser.name, 
+        host_owner_id: currentUser.owner_id, 
+        host_phone: String(currentUser.phone), 
+        entry_fee: fee, 
+        match_time: formattedTime,
+        status: 'open',
+        requests: [] 
+      }]);
+
+      if (error) {
+        alert("❌ Error: " + error.message);
+      } else {
+        const newBal = currentUser.balance - fee;
+        await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
+        currentUser.balance = newBal;
+        document.getElementById('userBalance').innerText = newBal;
+
+        alert("✅ Match Published!"); 
+        this.reset(); 
+        loadMatches(); 
+      }
+      btn.disabled = false;
+    });
+
+    // SEND JOIN REQUEST
+    async function sendJoinRequest(matchId) {
+      const { data: m } = await _supabase.from('matches').select('*').eq('id', matchId).single();
+      if(!m) return;
+
+      if(currentUser.balance < m.entry_fee) return alert("❌ Insufficient Balance!");
+
+      let currentReqs = m.requests || [];
+      const alreadyRequested = currentReqs.some(r => String(r.phone) === String(currentUser.phone));
+
+      if (alreadyRequested) {
+        return alert("⚠️ You have already sent a join request for this match!");
+      }
+
+      currentReqs.push({
+        phone: String(currentUser.phone),
+        name: currentUser.name,
+        owner_id: currentUser.owner_id
+      });
+
+      const { error } = await _supabase.from('matches').update({ requests: currentReqs }).eq('id', matchId);
+      if(!error) {
+        alert("🎉 Join Request Sent! Money will only be deducted if Host ACCEPTS your request.");
+        loadMatches();
+        switchTab('requests');
+      } else {
+        alert("Error sending request: " + error.message);
+      }
+    }
+
+    async function loadMatches() {
+      const { data: matches } = await _supabase.from('matches').select('*').eq('status', 'open').order('id', { ascending: false }).limit(20);
+      const container = document.getElementById('matchList'); container.innerHTML = '';
+
+      if(!matches || matches.length === 0) { container.innerHTML = '<p style="font-size:13px; color:#94a3b8;">No live matches available.</p>'; return; }
+
+      matches.forEach(m => {
+        const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
+        const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
+        const matchDate = m.match_time ? new Date(m.match_time).toLocaleString() : 'N/A';
+
+        let actionArea = isHost 
+          ? `<p style="color:#f59e0b; font-size:12px; margin-top:8px; font-weight:bold;">⏳ Waiting for requests (Check Requests Tab)...</p>` 
+          : `<button class="join-btn" onclick="sendJoinRequest(${m.id})">Send Join Request (Fee: Rs. ${m.entry_fee})</button>`;
+
+        container.innerHTML += `
+          <div class="match-item">
+            <div class="match-header"><span>Host: ${m.host_name}</span><span style="color:#38bdf8;">Entry: Rs. ${m.entry_fee}</span></div>
+            <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b> | Time: ${matchDate}</div>
+            ${actionArea}
+          </div>`;
+      });
+    }
+
+    // HOST ACCEPTS A REQUEST
+    async function acceptGuestRequest(matchId, guestPhone, guestName, guestOwnerId, entryFee) {
+      if(!confirm(`Accept ${guestName}'s request? Rs. ${entryFee} will be deducted from their balance.`)) return;
+
+      const { data: guestUser } = await _supabase.from('users').select('balance').eq('phone', guestPhone).single();
+      if(!guestUser || guestUser.balance < entryFee) {
+        return alert("❌ Opponent does not have enough balance anymore!");
+      }
+
+      await _supabase.from('users').update({ balance: guestUser.balance - entryFee }).eq('phone', guestPhone);
+
+      const { error } = await _supabase.from('matches').update({
+        guest_name: guestName,
+        guest_owner_id: guestOwnerId,
+        guest_phone: guestPhone,
+        status: 'full'
+      }).eq('id', matchId);
+
+      if(!error) {
+        alert("✅ Request Accepted & Match Locked!");
+        loadRequestsTab();
+      }
+    }
+
+    async function updateRoomCredentials(matchId) {
+      const rId = prompt("Enter Match Room ID / Code:");
+      const rPass = prompt("Enter Room Password:");
+      if(!rId || !rPass) return alert("Room details are required!");
+
+      const { error } = await _supabase.from('matches').update({ room_id: rId, room_pass: rPass }).eq('id', matchId);
+      if(!error) { alert("✅ Room details updated and shared!"); loadRequestsTab(); }
+    }
+
+    async function loadRequestsTab() {
+      const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false }).limit(25);
+      const container = document.getElementById('requestsList'); container.innerHTML = '';
+      if(!matches) return;
+
+      matches.forEach(m => {
+        const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
+        const isAcceptedGuest = currentUser && (String(currentUser.phone).trim() === String(m.guest_phone).trim());
+        
+        let requests = m.requests || [];
+        const myRequest = requests.find(r => String(r.phone) === String(currentUser.phone));
+
+        if (isHost) {
+          let hostContent = '';
+          if (m.status === 'open') {
+            if (requests.length === 0) {
+              hostContent = `<p style="color:#94a3b8; font-size:12px; margin-top:5px;">No requests received yet.</p>`;
+            } else {
+              hostContent = `<div style="margin-top:8px;"><b>Pending Requests:</b>`;
+              requests.forEach(r => {
+                hostContent += `
+                  <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:6px; margin-top:4px; border-radius:4px;">
+                    <span style="font-size:12px;">${r.name} (${r.owner_id})</span>
+                    <button class="accept-btn" style="padding:4px 8px;" onclick="acceptGuestRequest(${m.id}, '${r.phone}', '${r.name}', '${r.owner_id}', ${m.entry_fee})">Accept</button>
+                  </div>`;
+              });
+              hostContent += `</div>`;
+            }
+          } else if (m.status === 'full') {
+            const matchTime = new Date(m.match_time).getTime();
+            const currentTime = new Date().getTime();
+            const diffMinutes = (matchTime - currentTime) / (1000 * 60);
+
+            if (diffMinutes <= 5 && diffMinutes >= -60) {
+              if (m.room_id && m.room_pass) {
+                hostContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
+              } else {
+                hostContent = `<button class="join-btn" style="background:#eab308; color:#000;" onclick="updateRoomCredentials(${m.id})">⚡ Set Room ID & Password Now</button>`;
+              }
+            } else {
+              hostContent = `<p style="color:#ef4444; font-size:12px; margin-top:5px;">🔒 Room credentials unlock 5 mins before start time.</p>`;
+            }
+          }
+
+          container.innerHTML += `
+            <div class="req-item">
+              <div><b>Match #${m.id}</b> | Entry: Rs. ${m.entry_fee}</div>
+              <div style="font-size:12px; color:#94a3b8; margin-top:2px;">Opponent: <b>${m.guest_name || 'Not Selected'}</b></div>
+              ${hostContent}
+            </div>`;
+        }
+        else if (isAcceptedGuest || myRequest) {
+          let guestStatusUI = '';
+          if (m.status === 'full' && isAcceptedGuest) {
+            const matchTime = new Date(m.match_time).getTime();
+            const currentTime = new Date().getTime();
+            const diffMinutes = (matchTime - currentTime) / (1000 * 60);
+
+            if (diffMinutes <= 5 && diffMinutes >= -60) {
+              if (m.room_id && m.room_pass) {
+                guestStatusUI = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
+              } else {
+                guestStatusUI = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Host is setting Room ID & Pass...</p>`;
+              }
+            } else {
+              guestStatusUI = `<p style="color:#22c55e; font-size:12px; margin-top:5px;">✅ Accepted! Room credentials unlock 5 mins before start.</p>`;
+            }
+          } else {
+            guestStatusUI = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Request Pending Host Acceptance...</p>`;
+          }
+
+          container.innerHTML += `
+            <div class="req-item">
+              <div>Host: <b>${m.host_name}</b> | Entry: Rs. ${m.entry_fee}</div>
+              ${guestStatusUI}
+            </div>`;
+        }
+      });
+    }
+
+    // DEPOSIT SUBMIT
+    document.getElementById('depositForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnDepositSubmit');
+      btn.disabled = true;
+
+      const amount = parseFloat(document.getElementById('depAmount').value);
+      const ref = document.getElementById('depRef').value;
+      const screenshot = document.getElementById('depImgPreview').src;
+
+      const { error } = await _supabase.from('deposits').insert([
+        { user_phone: String(currentUser.phone), user_name: currentUser.name, amount, ref, proof_img: screenshot, status: 'pending' }
+      ]);
+
+      if(!error) {
+        alert("✅ Deposit Request Submitted!");
+        this.reset(); document.getElementById('depImgPreview').style.display = 'none';
+        switchTab('history');
+      } else alert("Error: " + error.message);
+      btn.disabled = false;
+    });
+
+    // WITHDRAW SUBMIT
+    document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnWithdrawSubmit');
+      btn.disabled = true;
+
+      const method = document.getElementById('witMethod').value;
+      const number = document.getElementById('witNumber').value;
+      const name = document.getElementById('witName').value;
+      const amount = parseFloat(document.getElementById('witAmount').value);
+
+      if(currentUser.balance < amount) { alert("❌ Insufficient Balance!"); btn.disabled = false; return; }
+
+      const { error } = await _supabase.from('withdrawals').insert([
+        { user_phone: String(currentUser.phone), user_name: currentUser.name, method, number, acc_name: name, amount, status: 'pending' }
+      ]);
+
+      if(!error) {
+        const newBal = currentUser.balance - amount;
+        await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
+        currentUser.balance = newBal;
+        document.getElementById('userBalance').innerText = newBal;
+        alert("✅ Withdraw Requested!"); this.reset(); switchTab('history');
+      }
+      btn.disabled = false;
+    });
+
+    // ADMIN ANNOUNCEMENTS
+    document.getElementById('adminPostNewsForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const title = document.getElementById('newsTitleInput').value.trim();
+      const content = document.getElementById('newsContentInput').value.trim();
+
+      const { error } = await _supabase.from('announcements').insert([{ title, content }]);
+      if(!error) { alert("✅ Announcement Published!"); this.reset(); loadNews(); }
+      else alert("Error: " + error.message);
+    });
+
+    async function loadNews() {
+      const { data: newsList } = await _supabase.from('announcements').select('*').order('id', { ascending: false }).limit(10);
+      const headerContainer = document.getElementById('latestNewsHeaderBox');
+      const newsPageContainer = document.getElementById('fullNewsList');
+      headerContainer.innerHTML = ''; newsPageContainer.innerHTML = '';
+      if(!newsList || newsList.length === 0) return;
+
+      const latest = newsList[0];
+      headerContainer.innerHTML = `<div class="news-banner"><div class="news-header"><span class="news-icon">📢</span><div class="news-title">${latest.title}</div></div><div class="news-body">${latest.content}</div></div>`;
+
+      newsList.forEach(n => {
+        newsPageContainer.innerHTML += `<div class="news-banner"><div class="news-header"><span class="news-icon">🔔</span><div class="news-title">${n.title}</div></div><div class="news-body">${n.content}</div></div>`;
+      });
+    }
+
+    async function loadHistoryTab() {
+      if(!currentUser) return;
+      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false }).limit(15);
+      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false }).limit(15);
+
+      const txContainer = document.getElementById('transactionHistoryList'); txContainer.innerHTML = '';
+      let txList = [];
+      if(deps) deps.forEach(d => txList.push({ type: 'Deposit', amount: d.amount, status: d.status, reason: d.reason }));
+      if(wits) wits.forEach(w => txList.push({ type: 'Withdrawal', amount: w.amount, status: w.status, reason: w.reason }));
+
+      if (txList.length === 0) {
+        txContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No transaction history found.</p>';
+        return;
+      }
+
+      txList.forEach(t => {
+        let badge = t.status === 'approved' ? 'badge-approved' : (t.status === 'rejected' ? 'badge-rejected' : 'badge-pending');
+        txContainer.innerHTML += `<div class="history-card"><div style="display:flex; justify-content:space-between;"><b>${t.type}: Rs. ${t.amount}</b><span class="status-badge ${badge}">${t.status}</span></div>${t.reason ? `<div style="color:#ef4444; font-size:11px; margin-top:4px;">Reason: ${t.reason}</div>` : ''}</div>`;
+      });
+    }
+
+    // SUPER FAST ADMIN LOAD
+    async function loadAdminData() {
+      const { data: deposits, error } = await _supabase
+        .from('deposits')
+        .select('id, user_name, user_phone, amount, ref, status')
+        .eq('status', 'pending')
+        .order('id', { ascending: false });
+
+      const depContainer = document.getElementById('adminDepositList'); 
+      depContainer.innerHTML = '';
+
+      if(error) {
+        depContainer.innerHTML = `<p style="color:#ef4444; font-size:12px;">Error: ${error.message}</p>`;
+        return;
+      }
+
+      if(!deposits || deposits.length === 0) {
+        depContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No pending deposits.</p>';
+      } else {
+        deposits.forEach(d => {
+          depContainer.innerHTML += `
+            <div class="req-item" id="dep-item-${d.id}">
+              <div><b>${d.user_name}</b> (${d.user_phone}) - <b style="color:#22c55e;">Rs. ${d.amount}</b></div>
+              <div style="font-size:12px; color:#94a3b8; margin-top:2px;">Ref Code: <b>${d.ref}</b></div>
+              <button style="background:#334155; color:#38bdf8; border:1px solid #38bdf8; padding:5px 8px; font-size:11px; border-radius:4px; margin-top:6px; cursor:pointer;" onclick="viewDepositProof(${d.id})">📷 View Screenshot</button>
+              <div id="proof-container-${d.id}" style="margin-top:5px;"></div>
+              <div class="action-row">
+                <button class="accept-btn" onclick="approveDeposit(${d.id}, '${d.user_phone}', ${d.amount})">Approve</button>
+                <button class="reject-btn" onclick="rejectDeposit(${d.id})">Reject</button>
+              </div>
+            </div>`;
+        });
+      }
+
+      const { data: withdrawals } = await _supabase
+        .from('withdrawals')
+        .select('id, user_name, user_phone, method, number, acc_name, amount, status')
+        .eq('status', 'pending')
+        .order('id', { ascending: false });
+
+      const witContainer = document.getElementById('adminWithdrawList'); 
+      witContainer.innerHTML = '';
+
+      if(!withdrawals || withdrawals.length === 0) {
+        witContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No pending withdrawals.</p>';
+      } else {
+        withdrawals.forEach(w => {
+          witContainer.innerHTML += `
+            <div class="req-item" id="wit-item-${w.id}">
+              <div><b>${w.user_name}</b> - Rs. ${w.amount} via <b>${w.method}</b> (${w.number})</div>
+              <div style="font-size:11px; color:#94a3b8;">Name: ${w.acc_name}</div>
+              <div class="action-row">
+                <button class="accept-btn" onclick="approveWithdraw(${w.id})">Mark Paid</button>
+                <button class="reject-btn" onclick="rejectWithdraw(${w.id}, '${w.user_phone}', ${w.amount})">Reject & Refund</button>
+              </div>
+            </div>`;
+        });
+      }
+    }
+
+    async function viewDepositProof(depId) {
+      const container = document.getElementById(`proof-container-${depId}`);
+      container.innerHTML = '<span style="font-size:11px; color:#eab308;">Loading image...</span>';
+
+      const { data } = await _supabase.from('deposits').select('proof_img').eq('id', depId).single();
+      if(data && data.proof_img) {
+        container.innerHTML = `<img src="${data.proof_img}" style="width:100%; max-height:250px; object-fit:contain; border-radius:6px; border:1px solid #38bdf8; margin-top:5px;">`;
+      } else {
+        container.innerHTML = '<span style="font-size:11px; color:#ef4444;">No screenshot attached!</span>';
+      }
+    }
+
+    async function approveDeposit(depId, userPhone, rawAmount) {
+      if(!confirm("Are you sure you want to APPROVE this Deposit?")) return;
+      const netAmount = rawAmount - 2;
+      const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
+      if(u) {
+        await _supabase.from('users').update({ balance: u.balance + netAmount }).eq('phone', userPhone);
+        await _supabase.from('deposits').update({ status: 'approved' }).eq('id', depId);
+        alert("✅ Approved!"); loadAdminData();
+      }
+    }
+
+    async function rejectDeposit(depId) {
+      if(!confirm("Are you sure you want to REJECT this Deposit?")) return;
+      const choice = prompt("Select Reason (1: Fake Ref, 2: Payment Not Received, 3: Insufficient Amount):");
+      if(choice) {
+        await _supabase.from('deposits').update({ status: 'rejected', reason: DEPOSIT_REJECT_REASONS[parseInt(choice)-1] || "Rejected" }).eq('id', depId);
+        alert("❌ Rejected!"); loadAdminData();
+      }
+    }
+
+    async function approveWithdraw(witId) {
+      if(!confirm("Are you sure you want to MARK PAID this Withdrawal?")) return;
+      await _supabase.from('withdrawals').update({ status: 'approved' }).eq('id', witId);
+      alert("✅ Marked Paid!"); loadAdminData();
+    }
+
+    async function rejectWithdraw(witId, userPhone, amount) {
+      if(!confirm("Are you sure you want to REJECT & REFUND this Withdrawal?")) return;
+      const choice = prompt("Select Reason (1: Invalid Account, 2: Name Mismatch, 3: Fraud):");
+      if(choice) {
+        const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
+        if(u) await _supabase.from('users').update({ balance: u.balance + amount }).eq('phone', userPhone);
+        await _supabase.from('withdrawals').update({ status: 'rejected', reason: WITHDRAW_REJECT_REASONS[parseInt(choice)-1] || "Rejected" }).eq('id', witId);
+        alert("❌ Rejected & Refunded!"); loadAdminData();
+      }
+    }
+
+    // REALTIME LISTENER
+    function subscribeRealtime() {
+      _supabase.channel('schema-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+          if(activeTab === 'arena') loadMatches();
+          if(activeTab === 'requests') loadRequestsTab();
+          if(activeTab === 'history') loadHistoryTab();
+          if(currentUser) {
+            _supabase.from('users').select('balance').eq('phone', currentUser.phone).single().then(({data}) => {
+              if(data) { currentUser.balance = data.balance; document.getElementById('userBalance').innerText = currentUser.balance; }
+            });
+          }
+        })
+        .subscribe();
     }
   </script>
 </body>
