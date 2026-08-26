@@ -180,11 +180,6 @@
         <h2>💳 Wallet Transactions Status</h2>
         <div id="transactionHistoryList">Loading transaction status...</div>
       </div>
-
-      <div class="card" style="border-color: #22c55e;">
-        <h2>🎮 Match History & Proof Upload</h2>
-        <div id="gameHistoryList">Loading match history...</div>
-      </div>
     </div>
 
     <!-- Deposit Page -->
@@ -238,16 +233,6 @@
 
     <!-- Admin Page -->
     <div id="admin" class="page">
-      <div class="card" style="border-color: #22c55e;">
-        <h2>📊 Earnings Stats</h2>
-        <div class="stat-grid">
-          <div class="stat-card"><div>Profit (10%)</div><div class="stat-num" id="statProfit" style="color:#22c55e;">Rs. 0</div></div>
-          <div class="stat-card"><div>Matches</div><div class="stat-num" id="statMatches">0</div></div>
-          <div class="stat-card"><div>Deposits</div><div class="stat-num" id="statDeposits">Rs. 0</div></div>
-          <div class="stat-card"><div>Withdrawals</div><div class="stat-num" id="statWithdraws" style="color:#ef4444;">Rs. 0</div></div>
-        </div>
-      </div>
-
       <div class="card" style="border-color: #eab308;">
         <h2>📢 Post Announcement</h2>
         <form id="adminPostNewsForm">
@@ -359,7 +344,7 @@
       document.getElementById('winnerPrize').innerText = `Rs. ${(fee * 2 * 0.9).toFixed(1)}`;
     }
 
-    // MATCH CREATE (NO ROOM CODE NOW, UNLOCKS 5 MIN BEFORE START)
+    // MATCH CREATE
     document.getElementById('createMatchForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnPublishMatch');
@@ -378,7 +363,8 @@
         host_phone: String(currentUser.phone), 
         entry_fee: fee, 
         match_time: formattedTime,
-        status: 'open' 
+        status: 'open',
+        requests: [] 
       }]);
 
       if (error) {
@@ -389,30 +375,41 @@
         currentUser.balance = newBal;
         document.getElementById('userBalance').innerText = newBal;
 
-        alert("✅ Match Published! Set Room ID/Pass when 5 minutes are remaining."); 
+        alert("✅ Match Published!"); 
         this.reset(); 
         loadMatches(); 
       }
       btn.disabled = false;
     });
 
-    async function sendJoinRequest(matchId, entryFee) {
-      if(!confirm("Join this match for Rs. " + entryFee + "?")) return;
-      if(currentUser.balance < entryFee) return alert("❌ Insufficient Balance!");
+    // SEND JOIN REQUEST (NO MONEY DEDUCTION HERE)
+    async function sendJoinRequest(matchId) {
+      const { data: m } = await _supabase.from('matches').select('*').eq('id', matchId).single();
+      if(!m) return;
 
-      const newBal = currentUser.balance - entryFee;
-      await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
-      currentUser.balance = newBal;
-      document.getElementById('userBalance').innerText = newBal;
+      if(currentUser.balance < m.entry_fee) return alert("❌ Insufficient Balance!");
 
-      await _supabase.from('matches').update({ 
-        guest_name: currentUser.name, 
-        guest_owner_id: currentUser.owner_id, 
-        guest_phone: String(currentUser.phone), 
-        status: 'full' 
-      }).eq('id', matchId);
+      let currentReqs = m.requests || [];
+      const alreadyRequested = currentReqs.some(r => String(r.phone) === String(currentUser.phone));
 
-      alert("🎉 Joined Successfully!"); loadMatches(); switchTab('requests');
+      if (alreadyRequested) {
+        return alert("⚠️ You have already sent a join request for this match!");
+      }
+
+      currentReqs.push({
+        phone: String(currentUser.phone),
+        name: currentUser.name,
+        owner_id: currentUser.owner_id
+      });
+
+      const { error } = await _supabase.from('matches').update({ requests: currentReqs }).eq('id', matchId);
+      if(!error) {
+        alert("🎉 Join Request Sent! Money will only be deducted if Host ACCEPTS your request.");
+        loadMatches();
+        switchTab('requests');
+      } else {
+        alert("Error sending request: " + error.message);
+      }
     }
 
     async function loadMatches() {
@@ -428,8 +425,8 @@
         const matchDate = m.match_time ? new Date(m.match_time).toLocaleString() : 'N/A';
 
         let actionArea = isHost 
-          ? `<p style="color:#f59e0b; font-size:12px; margin-top:8px; font-weight:bold;">⏳ Waiting for opponent...</p>` 
-          : `<button class="join-btn" onclick="sendJoinRequest(${m.id}, ${m.entry_fee})">Join Match (Rs. ${m.entry_fee})</button>`;
+          ? `<p style="color:#f59e0b; font-size:12px; margin-top:8px; font-weight:bold;">⏳ Waiting for requests (Check Requests Tab)...</p>` 
+          : `<button class="join-btn" onclick="sendJoinRequest(${m.id})">Send Join Request (Fee: Rs. ${m.entry_fee})</button>`;
 
         container.innerHTML += `
           <div class="match-item">
@@ -440,7 +437,32 @@
       });
     }
 
-    // HOST UPDATES ROOM ID/PASS WHEN <= 5 MINS REMAINING
+    // HOST ACCEPTS A REQUEST (DEDUCT MONEY ONLY FOR ACCEPTED GUEST)
+    async function acceptGuestRequest(matchId, guestPhone, guestName, guestOwnerId, entryFee) {
+      if(!confirm(`Accept ${guestName}'s request? Rs. ${entryFee} will be deducted from their balance.`)) return;
+
+      const { data: guestUser } = await _supabase.from('users').select('balance').eq('phone', guestPhone).single();
+      if(!guestUser || guestUser.balance < entryFee) {
+        return alert("❌ Opponent does not have enough balance anymore!");
+      }
+
+      // Deduct balance from guest
+      await _supabase.from('users').update({ balance: guestUser.balance - entryFee }).eq('phone', guestPhone);
+
+      // Lock match with this accepted guest
+      const { error } = await _supabase.from('matches').update({
+        guest_name: guestName,
+        guest_owner_id: guestOwnerId,
+        guest_phone: guestPhone,
+        status: 'full'
+      }).eq('id', matchId);
+
+      if(!error) {
+        alert("✅ Request Accepted & Match Locked!");
+        loadRequestsTab();
+      }
+    }
+
     async function updateRoomCredentials(matchId) {
       const rId = prompt("Enter Match Room ID / Code:");
       const rPass = prompt("Enter Room Password:");
@@ -457,37 +479,83 @@
 
       matches.forEach(m => {
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
-        const isGuest = currentUser && (String(currentUser.phone).trim() === String(m.guest_phone).trim());
+        const isAcceptedGuest = currentUser && (String(currentUser.phone).trim() === String(m.guest_phone).trim());
+        
+        let requests = m.requests || [];
+        const myRequest = requests.find(r => String(r.phone) === String(currentUser.phone));
 
-        if (isHost || isGuest) {
-          let roomContent = '';
-          const matchTime = new Date(m.match_time).getTime();
-          const currentTime = new Date().getTime();
-          const diffMinutes = (matchTime - currentTime) / (1000 * 60);
-
-          if (diffMinutes <= 5 && diffMinutes >= -60) {
-            if(m.room_id && m.room_pass) {
-              roomContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
-            } else if (isHost) {
-              roomContent = `<button class="join-btn" style="background:#eab308; color:#000;" onclick="updateRoomCredentials(${m.id})">⚡ Set Room ID & Password Now</button>`;
+        // Display for HOST
+        if (isHost) {
+          let hostContent = '';
+          if (m.status === 'open') {
+            if (requests.length === 0) {
+              hostContent = `<p style="color:#94a3b8; font-size:12px; margin-top:5px;">No requests received yet.</p>`;
             } else {
-              roomContent = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Waiting for Host to submit Room ID & Password...</p>`;
+              hostContent = `<div style="margin-top:8px;"><b>Pending Requests:</b>`;
+              requests.forEach(r => {
+                hostContent += `
+                  <div style="display:flex; justify-size:space-between; align-items:center; background:#1e293b; padding:6px; margin-top:4px; border-radius:4px;">
+                    <span style="font-size:12px;">${r.name} (${r.owner_id})</span>
+                    <button class="accept-btn" style="padding:4px 8px;" onclick="acceptGuestRequest(${m.id}, '${r.phone}', '${r.name}', '${r.owner_id}', ${m.entry_fee})">Accept</button>
+                  </div>`;
+              });
+              hostContent += `</div>`;
             }
-          } else {
-            roomContent = `<p style="color:#ef4444; font-size:12px; margin-top:5px;">🔒 Room credentials input/unlocks 5 mins before start time.</p>`;
+          } else if (m.status === 'full') {
+            const matchTime = new Date(m.match_time).getTime();
+            const currentTime = new Date().getTime();
+            const diffMinutes = (matchTime - currentTime) / (1000 * 60);
+
+            if (diffMinutes <= 5 && diffMinutes >= -60) {
+              if (m.room_id && m.room_pass) {
+                hostContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
+              } else {
+                hostContent = `<button class="join-btn" style="background:#eab308; color:#000;" onclick="updateRoomCredentials(${m.id})">⚡ Set Room ID & Password Now</button>`;
+              }
+            } else {
+              hostContent = `<p style="color:#ef4444; font-size:12px; margin-top:5px;">🔒 Room credentials unlock 5 mins before start time.</p>`;
+            }
           }
 
           container.innerHTML += `
             <div class="req-item">
-              <div><b>${m.host_name}</b> vs <b>${m.guest_name || '...'}</b></div>
-              <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Time: ${new Date(m.match_time).toLocaleString()}</div>
-              ${roomContent}
+              <div><b>Match #${m.id}</b> | Entry: Rs. ${m.entry_fee}</div>
+              <div style="font-size:12px; color:#94a3b8; margin-top:2px;">Opponent: <b>${m.guest_name || 'Not Selected'}</b></div>
+              ${hostContent}
+            </div>`;
+        }
+
+        // Display for GUEST
+        else if (isAcceptedGuest || myRequest) {
+          let guestStatusUI = '';
+          if (m.status === 'full' && isAcceptedGuest) {
+            const matchTime = new Date(m.match_time).getTime();
+            const currentTime = new Date().getTime();
+            const diffMinutes = (matchTime - currentTime) / (1000 * 60);
+
+            if (diffMinutes <= 5 && diffMinutes >= -60) {
+              if (m.room_id && m.room_pass) {
+                guestStatusUI = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
+              } else {
+                guestStatusUI = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Host is setting Room ID & Pass...</p>`;
+              }
+            } else {
+              guestStatusUI = `<p style="color:#22c55e; font-size:12px; margin-top:5px;">✅ Accepted! Room credentials unlock 5 mins before start.</p>`;
+            }
+          } else {
+            guestStatusUI = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Request Pending Host Acceptance...</p>`;
+          }
+
+          container.innerHTML += `
+            <div class="req-item">
+              <div>Host: <b>${m.host_name}</b> | Entry: Rs. ${m.entry_fee}</div>
+              ${guestStatusUI}
             </div>`;
         }
       });
     }
 
-    // DEPOSIT SUBMIT (PREVENT DOUBLE SUBMIT)
+    // DEPOSIT SUBMIT
     document.getElementById('depositForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnDepositSubmit');
@@ -564,30 +632,35 @@
 
     async function loadHistoryTab() {
       if(!currentUser) return;
-      const { data: deps } = await _supabase.from('deposits').select('*').eq('user_phone', String(currentUser.phone));
-      const { data: wits } = await _supabase.from('withdrawals').select('*').eq('user_phone', String(currentUser.phone));
+      const { data: deps } = await _supabase.from('deposits').select('*').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false });
+      const { data: wits } = await _supabase.from('withdrawals').select('*').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false });
 
       const txContainer = document.getElementById('transactionHistoryList'); txContainer.innerHTML = '';
       let txList = [];
       if(deps) deps.forEach(d => txList.push({ type: 'Deposit', amount: d.amount, status: d.status, reason: d.reason }));
       if(wits) wits.forEach(w => txList.push({ type: 'Withdrawal', amount: w.amount, status: w.status, reason: w.reason }));
 
+      if (txList.length === 0) {
+        txContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No transaction history found.</p>';
+        return;
+      }
+
       txList.forEach(t => {
         let badge = t.status === 'approved' ? 'badge-approved' : (t.status === 'rejected' ? 'badge-rejected' : 'badge-pending');
-        txContainer.innerHTML += `<div class="history-card"><div style="display:flex; justify-content:space-between;"><b>${t.type}: Rs. ${t.amount}</b><span class="status-badge ${badge}">${t.status}</span></div>${t.reason ? `<div style="color:#ef4444; font-size:11px;">Reason: ${t.reason}</div>` : ''}</div>`;
+        txContainer.innerHTML += `<div class="history-card"><div style="display:flex; justify-content:space-between;"><b>${t.type}: Rs. ${t.amount}</b><span class="status-badge ${badge}">${t.status}</span></div>${t.reason ? `<div style="color:#ef4444; font-size:11px; margin-top:4px;">Reason: ${t.reason}</div>` : ''}</div>`;
       });
     }
 
-    // ADMIN CONFIRMATION POPUPS FOR APPROVE / REJECT
+    // ADMIN LOAD DATA (ONLY PENDING ITEMS SHOW APPROVE/REJECT BUTTONS)
     async function loadAdminData() {
       const { data: deposits } = await _supabase.from('deposits').select('*').eq('status', 'pending');
       const depContainer = document.getElementById('adminDepositList'); depContainer.innerHTML = '';
 
-      if(!deposits || deposits.length === 0) depContainer.innerHTML = 'No pending deposits.';
+      if(!deposits || deposits.length === 0) depContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No pending deposits.</p>';
       else {
         deposits.forEach(d => {
           depContainer.innerHTML += `
-            <div class="req-item">
+            <div class="req-item" id="dep-item-${d.id}">
               <div><b>${d.user_name}</b> (${d.user_phone}) - Rs. ${d.amount}</div>
               <div>Ref Code: ${d.ref}</div>
               ${d.proof_img ? `<img src="${d.proof_img}" style="width:100%; max-height:150px; object-fit:contain; margin-top:5px;">` : ''}
@@ -602,11 +675,11 @@
       const { data: withdrawals } = await _supabase.from('withdrawals').select('*').eq('status', 'pending');
       const witContainer = document.getElementById('adminWithdrawList'); witContainer.innerHTML = '';
 
-      if(!withdrawals || withdrawals.length === 0) witContainer.innerHTML = 'No pending withdrawals.';
+      if(!withdrawals || withdrawals.length === 0) witContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No pending withdrawals.</p>';
       else {
         withdrawals.forEach(w => {
           witContainer.innerHTML += `
-            <div class="req-item">
+            <div class="req-item" id="wit-item-${w.id}">
               <div><b>${w.user_name}</b> - Rs. ${w.amount} via <b>${w.method}</b> (${w.number})</div>
               <div class="action-row">
                 <button class="accept-btn" onclick="approveWithdraw(${w.id})">Mark Paid</button>
