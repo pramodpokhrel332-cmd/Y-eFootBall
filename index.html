@@ -392,7 +392,9 @@
       const fee = parseFloat(document.getElementById('entryFee').value);
       const mTimeInput = document.getElementById('matchTime').value;
 
-      if(currentUser.balance < fee) { alert(`❌ Insufficient Balance!`); btn.disabled = false; return; }
+      // तात्तातो balance चेक
+      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', currentUser.phone).single();
+      if(!freshUser || freshUser.balance < fee) { alert(`❌ Insufficient Balance!`); btn.disabled = false; return; }
 
       const formattedTime = new Date(mTimeInput).toISOString();
 
@@ -409,7 +411,7 @@
       if (error) {
         alert("❌ Error: " + error.message);
       } else {
-        const newBal = currentUser.balance - fee;
+        const newBal = freshUser.balance - fee;
         await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
         currentUser.balance = newBal;
         document.getElementById('userBalance').innerText = newBal;
@@ -425,7 +427,8 @@
       const { data: m } = await _supabase.from('matches').select('*').eq('id', matchId).single();
       if(!m) return;
 
-      if(currentUser.balance < m.entry_fee) return alert("❌ Insufficient Balance!");
+      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', currentUser.phone).single();
+      if(!freshUser || freshUser.balance < m.entry_fee) return alert("❌ Insufficient Balance!");
 
       let currentReqs = m.requests || [];
       const alreadyRequested = currentReqs.some(r => String(r.phone) === String(currentUser.phone));
@@ -495,27 +498,50 @@
       });
     }
 
+    // UPDATE: RPC Logic and Secure Balance Handling integrated into Accept Request
     async function acceptGuestRequest(matchId, guestPhone, guestName, guestOwnerId, entryFee) {
       if(!confirm(`Accept ${guestName}'s request? Rs. ${entryFee} will be deducted from their balance.`)) return;
 
-      const { data: guestUser } = await _supabase.from('users').select('balance').eq('phone', guestPhone).single();
-      if(!guestUser || guestUser.balance < entryFee) {
-        return alert("❌ Opponent does not have enough balance anymore!");
-      }
+      const { data: res, error } = await _supabase.rpc('accept_match_request', {
+        p_match_id: matchId,
+        p_guest_phone: guestPhone,
+        p_guest_name: guestName,
+        p_guest_owner_id: guestOwnerId,
+        p_entry_fee: entryFee
+      });
 
-      await _supabase.from('users').update({ balance: guestUser.balance - entryFee }).eq('phone', guestPhone);
+      if (error) {
+        // RPC नभएको खण्डमा fallback safety logic
+        console.warn("RPC call failed, executing safe fallback logic...", error.message);
 
-      const { error } = await _supabase.from('matches').update({
-        guest_name: guestName,
-        guest_owner_id: guestOwnerId,
-        guest_phone: guestPhone,
-        status: 'full',
-        updated_at: new Date().toISOString()
-      }).eq('id', matchId);
+        const { data: guestUser } = await _supabase.from('users').select('balance').eq('phone', guestPhone).single();
+        if(!guestUser || guestUser.balance < entryFee) {
+          return alert("❌ Opponent does not have enough balance anymore!");
+        }
 
-      if(!error) {
-        alert("✅ Request Accepted & Match Locked!");
-        loadRequestsTab();
+        await _supabase.from('users').update({ balance: guestUser.balance - entryFee }).eq('phone', guestPhone);
+
+        const { error: updateErr } = await _supabase.from('matches').update({
+          guest_name: guestName,
+          guest_owner_id: guestOwnerId,
+          guest_phone: guestPhone,
+          status: 'full',
+          updated_at: new Date().toISOString()
+        }).eq('id', matchId);
+
+        if(!updateErr) {
+          alert("✅ Request Accepted & Match Locked!");
+          loadRequestsTab();
+        } else {
+          alert("❌ Error: " + updateErr.message);
+        }
+      } else {
+        if (res && res.success) {
+          alert("✅ Request Accepted & Match Locked!");
+          loadRequestsTab();
+        } else {
+          alert("❌ " + (res ? res.message : "Failed to accept request!"));
+        }
       }
     }
 
@@ -626,7 +652,10 @@
       const amount = parseFloat(document.getElementById('witAmount').value);
 
       const minWinRequired = amount * 0.35;
-      const userWinBal = currentUser.win_balance || 0;
+      
+      const { data: freshUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', currentUser.phone).single();
+      const userWinBal = freshUser ? (freshUser.win_balance || 0) : (currentUser.win_balance || 0);
+      const userMainBal = freshUser ? freshUser.balance : currentUser.balance;
 
       if(userWinBal < minWinRequired) {
         alert(`❌ 35% Win Balance Required!\nTo withdraw Rs. ${amount}, you need at least Rs. ${minWinRequired.toFixed(1)} Win Balance.\nYour Win Balance: Rs. ${userWinBal}`);
@@ -634,7 +663,7 @@
         return;
       }
 
-      if(currentUser.balance < amount) { alert("❌ Insufficient Main Balance!"); btn.disabled = false; return; }
+      if(userMainBal < amount) { alert("❌ Insufficient Main Balance!"); btn.disabled = false; return; }
 
       const netWithdraw = amount - 5;
 
@@ -643,7 +672,7 @@
       ]);
 
       if(!error) {
-        const newBal = currentUser.balance - amount;
+        const newBal = userMainBal - amount;
         await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
         currentUser.balance = newBal;
         document.getElementById('userBalance').innerText = newBal;
