@@ -55,9 +55,6 @@
     .news-icon { font-size: 24px; background: rgba(255,255,255,0.1); padding: 6px; border-radius: 8px; }
     .news-title { font-size: 15px; font-weight: bold; color: #f0f9ff; }
     .news-body { font-size: 13px; color: #e0f2fe; line-height: 1.4; margin-top: 4px; }
-    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .stat-card { background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #334155; text-align: center; }
-    .stat-num { font-size: 18px; font-weight: bold; color: #38bdf8; margin-top: 4px; }
     .img-preview { width: 100%; max-height: 200px; object-fit: contain; border-radius: 6px; margin-top: 8px; border: 1px solid #334155; display: none; }
   </style>
 </head>
@@ -265,6 +262,7 @@
 
     const ADMIN_PIN = "3029";
     let currentUser = null;
+    let activeTab = 'arena';
 
     const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Ref Code", "Payment Not Received", "Insufficient Amount", "Duplicate Submission"];
     const WITHDRAW_REJECT_REASONS = ["Invalid Account Number", "Name Mismatch", "Rule Violated", "Suspicious Activity"];
@@ -299,7 +297,7 @@
       const phone = document.getElementById('regPhone').value.trim();
       const pass = document.getElementById('regPass').value.trim();
 
-      const { data, error } = await _supabase.from('users').insert([{ phone, name, owner_id: ownerId, pass, balance: 0 }]);
+      const { error } = await _supabase.from('users').insert([{ phone, name, owner_id: ownerId, pass, balance: 0 }]);
       if (error) alert("User Already Exists!");
       else { alert("✅ Registration Successful! Please Login."); toggleAuth('login'); document.getElementById('loginPhone').value = phone; }
     });
@@ -317,16 +315,19 @@
         document.getElementById('displayPlayerName').innerText = currentUser.name + " (" + currentUser.owner_id + ")";
         document.getElementById('userBalance').innerText = currentUser.balance || 0;
         
-        loadNews(); loadMatches(); loadRequestsTab(); loadHistoryTab(); subscribeRealtime();
+        loadNews(); loadMatches(); subscribeRealtime();
       } else alert("Invalid Login Credentials!");
     });
 
     function logout() { currentUser = null; document.getElementById('mainDashboard').style.display = 'none'; document.getElementById('authScreen').style.display = 'block'; }
 
     function switchTab(tabId) {
+      activeTab = tabId;
       document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.getElementById(tabId).classList.add('active');
+
+      if (tabId === 'arena') loadMatches();
       if (tabId === 'news') loadNews();
       if (tabId === 'requests') loadRequestsTab();
       if (tabId === 'history') loadHistoryTab();
@@ -382,7 +383,7 @@
       btn.disabled = false;
     });
 
-    // SEND JOIN REQUEST (NO MONEY DEDUCTION HERE)
+    // SEND JOIN REQUEST
     async function sendJoinRequest(matchId) {
       const { data: m } = await _supabase.from('matches').select('*').eq('id', matchId).single();
       if(!m) return;
@@ -413,13 +414,12 @@
     }
 
     async function loadMatches() {
-      const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false });
+      const { data: matches } = await _supabase.from('matches').select('*').eq('status', 'open').order('id', { ascending: false }).limit(20);
       const container = document.getElementById('matchList'); container.innerHTML = '';
 
-      const openMatches = matches ? matches.filter(m => m.status === 'open') : [];
-      if(openMatches.length === 0) { container.innerHTML = '<p style="font-size:13px; color:#94a3b8;">No live matches available.</p>'; return; }
+      if(!matches || matches.length === 0) { container.innerHTML = '<p style="font-size:13px; color:#94a3b8;">No live matches available.</p>'; return; }
 
-      openMatches.forEach(m => {
+      matches.forEach(m => {
         const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
         const matchDate = m.match_time ? new Date(m.match_time).toLocaleString() : 'N/A';
@@ -437,7 +437,7 @@
       });
     }
 
-    // HOST ACCEPTS A REQUEST (DEDUCT MONEY ONLY FOR ACCEPTED GUEST)
+    // HOST ACCEPTS A REQUEST
     async function acceptGuestRequest(matchId, guestPhone, guestName, guestOwnerId, entryFee) {
       if(!confirm(`Accept ${guestName}'s request? Rs. ${entryFee} will be deducted from their balance.`)) return;
 
@@ -446,10 +446,8 @@
         return alert("❌ Opponent does not have enough balance anymore!");
       }
 
-      // Deduct balance from guest
       await _supabase.from('users').update({ balance: guestUser.balance - entryFee }).eq('phone', guestPhone);
 
-      // Lock match with this accepted guest
       const { error } = await _supabase.from('matches').update({
         guest_name: guestName,
         guest_owner_id: guestOwnerId,
@@ -473,7 +471,7 @@
     }
 
     async function loadRequestsTab() {
-      const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false });
+      const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false }).limit(25);
       const container = document.getElementById('requestsList'); container.innerHTML = '';
       if(!matches) return;
 
@@ -484,7 +482,6 @@
         let requests = m.requests || [];
         const myRequest = requests.find(r => String(r.phone) === String(currentUser.phone));
 
-        // Display for HOST
         if (isHost) {
           let hostContent = '';
           if (m.status === 'open') {
@@ -494,7 +491,7 @@
               hostContent = `<div style="margin-top:8px;"><b>Pending Requests:</b>`;
               requests.forEach(r => {
                 hostContent += `
-                  <div style="display:flex; justify-size:space-between; align-items:center; background:#1e293b; padding:6px; margin-top:4px; border-radius:4px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:6px; margin-top:4px; border-radius:4px;">
                     <span style="font-size:12px;">${r.name} (${r.owner_id})</span>
                     <button class="accept-btn" style="padding:4px 8px;" onclick="acceptGuestRequest(${m.id}, '${r.phone}', '${r.name}', '${r.owner_id}', ${m.entry_fee})">Accept</button>
                   </div>`;
@@ -524,8 +521,6 @@
               ${hostContent}
             </div>`;
         }
-
-        // Display for GUEST
         else if (isAcceptedGuest || myRequest) {
           let guestStatusUI = '';
           if (m.status === 'full' && isAcceptedGuest) {
@@ -616,7 +611,7 @@
     });
 
     async function loadNews() {
-      const { data: newsList } = await _supabase.from('announcements').select('*').order('id', { ascending: false });
+      const { data: newsList } = await _supabase.from('announcements').select('*').order('id', { ascending: false }).limit(10);
       const headerContainer = document.getElementById('latestNewsHeaderBox');
       const newsPageContainer = document.getElementById('fullNewsList');
       headerContainer.innerHTML = ''; newsPageContainer.innerHTML = '';
@@ -632,8 +627,8 @@
 
     async function loadHistoryTab() {
       if(!currentUser) return;
-      const { data: deps } = await _supabase.from('deposits').select('*').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false });
-      const { data: wits } = await _supabase.from('withdrawals').select('*').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false });
+      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false }).limit(15);
+      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false }).limit(15);
 
       const txContainer = document.getElementById('transactionHistoryList'); txContainer.innerHTML = '';
       let txList = [];
@@ -651,19 +646,32 @@
       });
     }
 
-    // ADMIN LOAD DATA (ONLY PENDING ITEMS SHOW APPROVE/REJECT BUTTONS)
+    // SUPER FAST ADMIN LOAD
     async function loadAdminData() {
-      const { data: deposits } = await _supabase.from('deposits').select('*').eq('status', 'pending');
-      const depContainer = document.getElementById('adminDepositList'); depContainer.innerHTML = '';
+      const { data: deposits, error } = await _supabase
+        .from('deposits')
+        .select('id, user_name, user_phone, amount, ref, status')
+        .eq('status', 'pending')
+        .order('id', { ascending: false });
 
-      if(!deposits || deposits.length === 0) depContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No pending deposits.</p>';
-      else {
+      const depContainer = document.getElementById('adminDepositList'); 
+      depContainer.innerHTML = '';
+
+      if(error) {
+        depContainer.innerHTML = `<p style="color:#ef4444; font-size:12px;">Error: ${error.message}</p>`;
+        return;
+      }
+
+      if(!deposits || deposits.length === 0) {
+        depContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No pending deposits.</p>';
+      } else {
         deposits.forEach(d => {
           depContainer.innerHTML += `
             <div class="req-item" id="dep-item-${d.id}">
-              <div><b>${d.user_name}</b> (${d.user_phone}) - Rs. ${d.amount}</div>
-              <div>Ref Code: ${d.ref}</div>
-              ${d.proof_img ? `<img src="${d.proof_img}" style="width:100%; max-height:150px; object-fit:contain; margin-top:5px;">` : ''}
+              <div><b>${d.user_name}</b> (${d.user_phone}) - <b style="color:#22c55e;">Rs. ${d.amount}</b></div>
+              <div style="font-size:12px; color:#94a3b8; margin-top:2px;">Ref Code: <b>${d.ref}</b></div>
+              <button style="background:#334155; color:#38bdf8; border:1px solid #38bdf8; padding:5px 8px; font-size:11px; border-radius:4px; margin-top:6px; cursor:pointer;" onclick="viewDepositProof(${d.id})">📷 View Screenshot</button>
+              <div id="proof-container-${d.id}" style="margin-top:5px;"></div>
               <div class="action-row">
                 <button class="accept-btn" onclick="approveDeposit(${d.id}, '${d.user_phone}', ${d.amount})">Approve</button>
                 <button class="reject-btn" onclick="rejectDeposit(${d.id})">Reject</button>
@@ -672,21 +680,41 @@
         });
       }
 
-      const { data: withdrawals } = await _supabase.from('withdrawals').select('*').eq('status', 'pending');
-      const witContainer = document.getElementById('adminWithdrawList'); witContainer.innerHTML = '';
+      const { data: withdrawals } = await _supabase
+        .from('withdrawals')
+        .select('id, user_name, user_phone, method, number, acc_name, amount, status')
+        .eq('status', 'pending')
+        .order('id', { ascending: false });
 
-      if(!withdrawals || withdrawals.length === 0) witContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No pending withdrawals.</p>';
-      else {
+      const witContainer = document.getElementById('adminWithdrawList'); 
+      witContainer.innerHTML = '';
+
+      if(!withdrawals || withdrawals.length === 0) {
+        witContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No pending withdrawals.</p>';
+      } else {
         withdrawals.forEach(w => {
           witContainer.innerHTML += `
             <div class="req-item" id="wit-item-${w.id}">
               <div><b>${w.user_name}</b> - Rs. ${w.amount} via <b>${w.method}</b> (${w.number})</div>
+              <div style="font-size:11px; color:#94a3b8;">Name: ${w.acc_name}</div>
               <div class="action-row">
                 <button class="accept-btn" onclick="approveWithdraw(${w.id})">Mark Paid</button>
                 <button class="reject-btn" onclick="rejectWithdraw(${w.id}, '${w.user_phone}', ${w.amount})">Reject & Refund</button>
               </div>
             </div>`;
         });
+      }
+    }
+
+    async function viewDepositProof(depId) {
+      const container = document.getElementById(`proof-container-${depId}`);
+      container.innerHTML = '<span style="font-size:11px; color:#eab308;">Loading image...</span>';
+
+      const { data } = await _supabase.from('deposits').select('proof_img').eq('id', depId).single();
+      if(data && data.proof_img) {
+        container.innerHTML = `<img src="${data.proof_img}" style="width:100%; max-height:250px; object-fit:contain; border-radius:6px; border:1px solid #38bdf8; margin-top:5px;">`;
+      } else {
+        container.innerHTML = '<span style="font-size:11px; color:#ef4444;">No screenshot attached!</span>';
       }
     }
 
@@ -727,10 +755,13 @@
       }
     }
 
+    // REALTIME LISTENER
     function subscribeRealtime() {
       _supabase.channel('schema-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-          loadNews(); loadMatches(); loadRequestsTab(); loadHistoryTab();
+          if(activeTab === 'arena') loadMatches();
+          if(activeTab === 'requests') loadRequestsTab();
+          if(activeTab === 'history') loadHistoryTab();
           if(currentUser) {
             _supabase.from('users').select('balance').eq('phone', currentUser.phone).single().then(({data}) => {
               if(data) { currentUser.balance = data.balance; document.getElementById('userBalance').innerText = currentUser.balance; }
