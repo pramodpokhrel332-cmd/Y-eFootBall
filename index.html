@@ -392,7 +392,6 @@
       const fee = parseFloat(document.getElementById('entryFee').value);
       const mTimeInput = document.getElementById('matchTime').value;
 
-      // तात्तातो balance चेक
       const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', currentUser.phone).single();
       if(!freshUser || freshUser.balance < fee) { alert(`❌ Insufficient Balance!`); btn.disabled = false; return; }
 
@@ -498,7 +497,6 @@
       });
     }
 
-    // UPDATE: RPC Logic and Secure Balance Handling integrated into Accept Request
     async function acceptGuestRequest(matchId, guestPhone, guestName, guestOwnerId, entryFee) {
       if(!confirm(`Accept ${guestName}'s request? Rs. ${entryFee} will be deducted from their balance.`)) return;
 
@@ -511,7 +509,6 @@
       });
 
       if (error) {
-        // RPC नभएको खण्डमा fallback safety logic
         console.warn("RPC call failed, executing safe fallback logic...", error.message);
 
         const { data: guestUser } = await _supabase.from('users').select('balance').eq('phone', guestPhone).single();
@@ -836,10 +833,24 @@
 
     async function rejectDeposit(depId) {
       if(!confirm("Are you sure you want to REJECT this Deposit?")) return;
-      const choice = prompt("Select Reason (1: Fake Ref, 2: Payment Not Received, 3: Insufficient Amount):");
+      
+      const choice = prompt("Select Reason:\n1: Wrong / Fake Ref Code\n2: Payment Not Received\n3: Insufficient Amount\n4: Duplicate Submission");
+      
       if(choice) {
-        await _supabase.from('deposits').update({ status: 'rejected', reason: DEPOSIT_REJECT_REASONS[parseInt(choice)-1] || "Rejected" }).eq('id', depId);
-        alert("❌ Rejected!"); loadAdminData();
+        const selectedIndex = parseInt(choice.trim()) - 1;
+        const selectedReason = DEPOSIT_REJECT_REASONS[selectedIndex] || "Rejected by Admin";
+
+        const { error } = await _supabase
+          .from('deposits')
+          .update({ status: 'rejected', reason: selectedReason })
+          .eq('id', depId);
+
+        if(!error) {
+          alert("❌ Deposit Rejected Successfully!");
+          loadAdminData();
+        } else {
+          alert("Error: " + error.message);
+        }
       }
     }
 
@@ -851,11 +862,14 @@
 
     async function rejectWithdraw(witId, userPhone, amount) {
       if(!confirm("Are you sure you want to REJECT & REFUND this Withdrawal?")) return;
-      const choice = prompt("Select Reason (1: Invalid Account, 2: Name Mismatch, 3: Fraud):");
+      const choice = prompt("Select Reason:\n1: Invalid Account Number\n2: Name Mismatch\n3: Rule Violated\n4: Suspicious Activity");
       if(choice) {
+        const selectedIndex = parseInt(choice.trim()) - 1;
+        const selectedReason = WITHDRAW_REJECT_REASONS[selectedIndex] || "Rejected by Admin";
+
         const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
         if(u) await _supabase.from('users').update({ balance: u.balance + amount }).eq('phone', userPhone);
-        await _supabase.from('withdrawals').update({ status: 'rejected', reason: WITHDRAW_REJECT_REASONS[parseInt(choice)-1] || "Rejected" }).eq('id', witId);
+        await _supabase.from('withdrawals').update({ status: 'rejected', reason: selectedReason }).eq('id', witId);
         alert("❌ Rejected & Refunded!"); loadAdminData();
       }
     }
