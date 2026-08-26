@@ -11,7 +11,6 @@
     header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #1e293b; padding-bottom: 10px; }
     h1 { color: #38bdf8; font-size: 26px; font-weight: 800; }
     .tagline { color: #94a3b8; font-size: 12px; margin-top: 4px; }
-    .rules-btn { background: #38bdf8; color: #000; border: none; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 11px; margin-top: 8px; cursor: pointer; }
     
     .auth-box { max-width: 400px; margin: 20px auto; background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #38bdf8; }
     .auth-toggle { display: flex; gap: 10px; margin-bottom: 15px; }
@@ -24,9 +23,9 @@
     
     .user-bar { background: #0f172a; padding: 10px 14px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
     .menu-btn { background: #38bdf8; color: #000; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; }
-    
     .wallet-card { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid #38bdf8; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
     .wallet-bal { font-size: 20px; font-weight: bold; color: #22c55e; }
+    .win-bal-text { font-size: 11px; color: #38bdf8; margin-top: 2px; }
     .wallet-actions { display: flex; gap: 6px; }
     .wallet-btn { background: #38bdf8; border: none; padding: 8px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #000; font-size: 12px; }
     .withdraw-btn-head { background: #ef4444; color: #fff; }
@@ -35,20 +34,19 @@
     h2 { font-size: 18px; color: #38bdf8; margin-bottom: 12px; }
     label { display: block; font-size: 13px; color: #cbd5e1; margin-top: 10px; }
     input, select, textarea { width: 100%; padding: 10px; margin-top: 4px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 14px; }
-    
     .pool-calc { background: #0f172a; padding: 10px; border-radius: 6px; margin-top: 12px; font-size: 13px; border: 1px solid #334155; }
+    
     button.primary-btn { width: 100%; padding: 12px; background: #22c55e; border: none; color: white; font-weight: bold; border-radius: 8px; margin-top: 15px; cursor: pointer; font-size: 15px; }
     button.primary-btn:disabled { background: #64748b; cursor: not-allowed; }
     
     .match-item { background: #0f172a; border-left: 4px solid #38bdf8; padding: 12px; border-radius: 6px; margin-top: 10px; }
+    .match-item.locked { border-left-color: #ef4444; opacity: 0.85; }
     .match-header { display: flex; justify-content: space-between; font-weight: bold; }
     .match-info { font-size: 12px; color: #94a3b8; margin-top: 5px; }
     .join-btn { background: #22c55e; padding: 8px 12px; font-size: 12px; margin-top: 8px; border-radius: 4px; border: none; color: #fff; font-weight: bold; width: 100%; cursor: pointer; }
     .action-row { display: flex; gap: 8px; margin-top: 8px; }
     .accept-btn { flex: 2; background: #22c55e; color: #fff; padding: 8px; font-size: 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
-    .accept-btn:disabled { background: #64748b; cursor: not-allowed; }
     .reject-btn { flex: 1; background: #ef4444; color: #fff; padding: 8px; font-size: 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
-    .reject-btn:disabled { background: #64748b; cursor: not-allowed; }
     
     .page { display: none; }
     .page.active { display: block; }
@@ -67,11 +65,10 @@
     .news-title { font-size: 15px; font-weight: bold; color: #f0f9ff; }
     .news-body { font-size: 13px; color: #e0f2fe; line-height: 1.4; margin-top: 4px; }
     .img-preview { width: 100%; max-height: 200px; object-fit: contain; border-radius: 6px; margin-top: 8px; border: 1px solid #334155; display: none; }
-
-    /* Modal Styling */
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; padding: 20px; overflow-y: auto; }
-    .modal-content { max-width: 500px; margin: 30px auto; background: #1e293b; border: 1px solid #38bdf8; border-radius: 12px; padding: 20px; color: #fff; position: relative; }
-    .close-btn { position: absolute; top: 12px; right: 15px; background: #ef4444; border: none; color: #fff; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    
+    .tourn-subtabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .tourn-subbtn { flex: 1; padding: 6px; background: #0f172a; border: 1px solid #334155; color: #94a3b8; font-weight: bold; border-radius: 6px; font-size: 12px; cursor: pointer; }
+    .tourn-subbtn.active { background: #38bdf8; color: #000; border-color: #38bdf8; }
   </style>
 </head>
 <body>
@@ -79,7 +76,6 @@
   <header>
     <h1>Y'eFOOTBALL</h1>
     <p class="tagline">Play 1v1 eFootball & Earn Cash</p>
-    <button class="rules-btn" onclick="toggleRulesModal(true)">📜 Rules & Policies</button>
   </header>
 
   <!-- Login/Register Screen -->
@@ -135,11 +131,9 @@
 
     <div class="wallet-card">
       <div>
-        <div style="font-size: 11px; color: #94a3b8;">My Total Balance</div>
+        <div style="font-size: 11px; color: #94a3b8;">Main Balance</div>
         <div class="wallet-bal">Rs. <span id="userBalance">0</span></div>
-        <div style="font-size: 11px; color: #22c55e; margin-top:2px;">
-          Winning Bal: <b id="userWinBalance">Rs. 0</b>
-        </div>
+        <div class="win-bal-text">Win Balance: Rs. <span id="userWinBalance">0</span></div>
       </div>
       <div class="wallet-actions">
         <button class="wallet-btn" onclick="switchTab('deposit')">+ Deposit</button>
@@ -170,8 +164,19 @@
       </div>
 
       <div class="card">
-        <h2>🔥 Live Open Matches</h2>
-        <div id="matchList">Loading live matches...</div>
+        <h2>⚽ Tournaments List</h2>
+        <div class="tourn-subtabs">
+          <button class="tourn-subbtn active" id="btnOpenMatches" onclick="toggleTournamentView('open')">🔓 Open Matches</button>
+          <button class="tourn-subbtn" id="btnLockedMatches" onclick="toggleTournamentView('locked')">🔒 Locked Matches</button>
+        </div>
+
+        <div id="openMatchesContainer">
+          <div id="openMatchList">Loading open matches...</div>
+        </div>
+
+        <div id="lockedMatchesContainer" style="display: none;">
+          <div id="lockedMatchList">Loading locked matches...</div>
+        </div>
       </div>
     </div>
 
@@ -191,18 +196,18 @@
       </div>
     </div>
 
-    <!-- History Tab -->
+    <!-- History Tab (Player View - Last 7 Days) -->
     <div id="history" class="page">
       <div class="card" style="border-color: #38bdf8;">
-        <h2>💳 Wallet Transactions Status</h2>
-        <div id="transactionHistoryList">Loading transaction status...</div>
+        <h2>📊 Player History (Last 7 Days)</h2>
+        <div id="playerHistoryList">Loading last week's history...</div>
       </div>
     </div>
 
-    <!-- Deposit Page -->
+    <!-- Deposit Page (Rs. 2 Fee) -->
     <div id="deposit" class="page">
       <div class="card" style="border-color: #22c55e;">
-        <h2 style="color: #22c55e;">💳 Deposit Balance</h2>
+        <h2 style="color: #22c55e;">💳 Deposit Balance (Rs. 2 Fee)</h2>
         <div class="payment-box">
           <p style="color: #38bdf8; font-weight: bold; font-size: 15px;">eSewa Details</p>
           <p>eSewa ID: <b style="color: #22c55e;">9847430292</b></p>
@@ -226,10 +231,12 @@
       </div>
     </div>
 
-    <!-- Withdraw Page -->
+    <!-- Withdraw Page (35% Win Balance + Rs 5 Fee) -->
     <div id="withdraw" class="page">
       <div class="card" style="border-color: #ef4444;">
-        <h2 style="color: #ef4444;">💸 Withdraw Funds</h2>
+        <h2 style="color: #ef4444;">💸 Withdraw Funds (Rs. 5 Fee)</h2>
+        <p style="font-size: 12px; color: #38bdf8; margin-bottom: 10px;">📌 Requirement: You must have at least 35% Win Balance of the withdrawal amount.</p>
+
         <form id="withdrawForm">
           <label>Method:</label>
           <select id="witMethod"><option value="eSewa">eSewa</option><option value="Khalti">Khalti</option></select>
@@ -243,12 +250,8 @@
           <label>Withdraw Amount (Min Rs. 75):</label>
           <input type="number" id="witAmount" placeholder="e.g. 100" min="75" required>
 
-          <button type="submit" id="btnWithdrawSubmit" class="primary-btn" style="background: #ef4444;">Submit Withdraw</button>
+          <button type="submit" id="btnWithdrawSubmit" class="primary-btn" style="background: #ef4444;">Submit Withdraw Request</button>
         </form>
-
-        <div style="margin-top: 12px; background: #0f172a; padding: 10px; border-radius: 6px; border-left: 3px solid #eab308; font-size: 11px; color: #cbd5e1;">
-          ⚠️ <b>35% Rule Notice:</b> जितेको रकम (Winning Balance) १००% निकाल्न पाइनेछ। Deposit रकम पनि मिसाएर झिक्न खोजेमा कुल रकमको कम्तिमा <b>३५% Winning Balance</b> हुनुपर्नेछ।
-        </div>
       </div>
     </div>
 
@@ -266,30 +269,19 @@
       </div>
 
       <div class="card" style="border-color: #38bdf8;">
-        <h2>🛡️ Pending Approvals</h2>
-        <h3 style="font-size: 14px; margin-top: 15px; color: #22c55e;">📥 Deposits</h3>
+        <h2>🛠️ Admin Panel & Global History</h2>
+
+        <h3 style="font-size: 14px; margin-top: 15px; color: #38bdf8;">📜 Global Admin History (All Time)</h3>
+        <div id="adminGlobalHistoryList" style="margin-top: 8px;">Loading global history...</div>
+
+        <h3 style="font-size: 14px; margin-top: 25px; color: #22c55e;">📥 Pending Deposits</h3>
         <div id="adminDepositList">Loading...</div>
 
-        <h3 style="font-size: 14px; margin-top: 25px; color: #ef4444;">📤 Withdrawals</h3>
+        <h3 style="font-size: 14px; margin-top: 25px; color: #ef4444;">📤 Pending Withdrawals</h3>
         <div id="adminWithdrawList">Loading...</div>
       </div>
     </div>
 
-  </div>
-
-  <!-- Rules Popup Modal -->
-  <div id="rulesModal" class="modal-overlay">
-    <div class="modal-content">
-      <button onclick="toggleRulesModal(false)" class="close-btn">✕ Close</button>
-      <h2 style="color: #38bdf8; font-size: 18px; margin-bottom: 12px; text-align: center;">📜 Tournament Rules & Policy</h2>
-      <div style="font-size: 13px; line-height: 1.6; color: #cbd5e1;">
-        <p style="margin-bottom: 10px;"><b style="color:#eab308;">1. Room ID Limit:</b> Host ले ५-७ मिनेटभित्र Room ID/Pass दिनुपर्छ, नभए Penalty लाग्नेछ।</p>
-        <p style="margin-bottom: 10px;"><b style="color:#eab308;">2. Guest Absence Penalty:</b> Host ले ID दिँदा पनि Guest नआए Guest को Entry Fee जफत हुनेछ।</p>
-        <p style="margin-bottom: 10px;"><b style="color:#eab308;">3. 4-Hour Deadline:</b> Match सकिएको ४ घण्टाभित्र Proof नआए Match Void हुनेछ।</p>
-        <p style="margin-bottom: 10px;"><b style="color:#eab308;">4. 35% Win Rule:</b> Deposit रकम मिसाएर निकाल्न कुल रकमको कम्तिमा ३५% Winning Balance हुनु अनिवार्य छ।</p>
-      </div>
-      <button onclick="toggleRulesModal(false)" class="primary-btn" style="margin-top: 15px;">I Understand & Agree</button>
-    </div>
   </div>
 
   <a href="https://wa.me/9779847430292" class="whatsapp-btn" target="_blank">💬 WhatsApp Support</a>
@@ -302,13 +294,10 @@
     const ADMIN_PIN = "3029";
     let currentUser = null;
     let activeTab = 'arena';
+    let currentTournTab = 'open';
 
     const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Ref Code", "Payment Not Received", "Insufficient Amount", "Duplicate Submission"];
     const WITHDRAW_REJECT_REASONS = ["Invalid Account Number", "Name Mismatch", "Rule Violated", "Suspicious Activity"];
-
-    function toggleRulesModal(show) {
-      document.getElementById('rulesModal').style.display = show ? 'block' : 'none';
-    }
 
     function previewImg(input, targetId) {
       const file = input.files[0];
@@ -340,7 +329,7 @@
       const phone = document.getElementById('regPhone').value.trim();
       const pass = document.getElementById('regPass').value.trim();
 
-      const { error } = await _supabase.from('users').insert([{ phone, name, owner_id: ownerId, pass, balance: 0, winning_balance: 0 }]);
+      const { error } = await _supabase.from('users').insert([{ phone, name, owner_id: ownerId, pass, balance: 0, win_balance: 0 }]);
       if (error) alert("User Already Exists!");
       else { alert("✅ Registration Successful! Please Login."); toggleAuth('login'); document.getElementById('loginPhone').value = phone; }
     });
@@ -357,7 +346,7 @@
         document.getElementById('mainDashboard').style.display = 'block';
         document.getElementById('displayPlayerName').innerText = currentUser.name + " (" + currentUser.owner_id + ")";
         document.getElementById('userBalance').innerText = currentUser.balance || 0;
-        document.getElementById('userWinBalance').innerText = "Rs. " + (currentUser.winning_balance || 0);
+        document.getElementById('userWinBalance').innerText = currentUser.win_balance || 0;
         
         loadNews(); loadMatches(); subscribeRealtime();
       } else alert("Invalid Login Credentials!");
@@ -374,7 +363,7 @@
       if (tabId === 'arena') loadMatches();
       if (tabId === 'news') loadNews();
       if (tabId === 'requests') loadRequestsTab();
-      if (tabId === 'history') loadHistoryTab();
+      if (tabId === 'history') loadPlayerHistory();
     }
 
     function openAdminPanel() {
@@ -383,13 +372,28 @@
       else if (pin !== null) alert("❌ Wrong PIN!");
     }
 
+    function toggleTournamentView(type) {
+      currentTournTab = type;
+      if(type === 'open') {
+        document.getElementById('btnOpenMatches').classList.add('active');
+        document.getElementById('btnLockedMatches').classList.remove('active');
+        document.getElementById('openMatchesContainer').style.display = 'block';
+        document.getElementById('lockedMatchesContainer').style.display = 'none';
+      } else {
+        document.getElementById('btnLockedMatches').classList.add('active');
+        document.getElementById('btnOpenMatches').classList.remove('active');
+        document.getElementById('openMatchesContainer').style.display = 'none';
+        document.getElementById('lockedMatchesContainer').style.display = 'block';
+      }
+    }
+
     function calculatePool() {
       const fee = parseFloat(document.getElementById('entryFee').value) || 0;
       document.getElementById('totalPool').innerText = `Rs. ${(fee * 2).toFixed(1)}`;
       document.getElementById('winnerPrize').innerText = `Rs. ${(fee * 2 * 0.9).toFixed(1)}`;
     }
 
-    // MATCH CREATE
+    // CREATE MATCH
     document.getElementById('createMatchForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnPublishMatch');
@@ -457,27 +461,50 @@
       }
     }
 
+    // LOAD MATCHES (Open vs Locked + 30 Mins Auto Hide)
     async function loadMatches() {
-      const { data: matches } = await _supabase.from('matches').select('*').eq('status', 'open').order('id', { ascending: false }).limit(20);
-      const container = document.getElementById('matchList'); container.innerHTML = '';
+      const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false });
+      const openContainer = document.getElementById('openMatchList');
+      const lockedContainer = document.getElementById('lockedMatchList');
+      openContainer.innerHTML = ''; lockedContainer.innerHTML = '';
 
-      if(!matches || matches.length === 0) { container.innerHTML = '<p style="font-size:13px; color:#94a3b8;">No live matches available.</p>'; return; }
+      if(!matches || matches.length === 0) { 
+        openContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No open matches available.</p>'; 
+        lockedContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No locked matches available.</p>'; 
+        return; 
+      }
+
+      const now = new Date().getTime();
 
       matches.forEach(m => {
         const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
         const matchDate = m.match_time ? new Date(m.match_time).toLocaleString() : 'N/A';
+        const isLocked = (m.status === 'full' || m.status === 'locked' || m.status === 'started');
 
-        let actionArea = isHost 
-          ? `<p style="color:#f59e0b; font-size:12px; margin-top:8px; font-weight:bold;">⏳ Waiting for requests (Check Requests Tab)...</p>` 
-          : `<button class="join-btn" onclick="sendJoinRequest(${m.id})">Send Join Request (Fee: Rs. ${m.entry_fee})</button>`;
+        if(isLocked) {
+          const lockedTime = new Date(m.updated_at || m.created_at).getTime();
+          // 30 Minutes Auto-Delete logic (Hide from UI)
+          if(now - lockedTime > 30 * 60 * 1000) return;
 
-        container.innerHTML += `
-          <div class="match-item">
-            <div class="match-header"><span>Host: ${m.host_name}</span><span style="color:#38bdf8;">Entry: Rs. ${m.entry_fee}</span></div>
-            <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b> | Time: ${matchDate}</div>
-            ${actionArea}
-          </div>`;
+          lockedContainer.innerHTML += `
+            <div class="match-item locked">
+              <div class="match-header"><span>🔒 Match #${m.id} (Host: ${m.host_name})</span><span style="color:#ef4444;">FULL / STARTED</span></div>
+              <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b> | Time: ${matchDate}</div>
+              <div style="font-size:10px; color:#f59e0b; margin-top:4px;">⏱ Auto-removes 30 mins after start</div>
+            </div>`;
+        } else {
+          let actionArea = isHost 
+            ? `<p style="color:#f59e0b; font-size:12px; margin-top:8px; font-weight:bold;">⏳ Waiting for requests (Check Requests Tab)...</p>` 
+            : `<button class="join-btn" onclick="sendJoinRequest(${m.id})">Send Join Request (Fee: Rs. ${m.entry_fee})</button>`;
+
+          openContainer.innerHTML += `
+            <div class="match-item">
+              <div class="match-header"><span>Host: ${m.host_name}</span><span style="color:#38bdf8;">Entry: Rs. ${m.entry_fee}</span></div>
+              <div class="match-info">Prize: <b style="color:#22c55e;">Rs. ${prize}</b> | Time: ${matchDate}</div>
+              ${actionArea}
+            </div>`;
+        }
       });
     }
 
@@ -496,7 +523,8 @@
         guest_name: guestName,
         guest_owner_id: guestOwnerId,
         guest_phone: guestPhone,
-        status: 'full'
+        status: 'full',
+        updated_at: new Date().toISOString()
       }).eq('id', matchId);
 
       if(!error) {
@@ -543,18 +571,10 @@
               hostContent += `</div>`;
             }
           } else if (m.status === 'full') {
-            const matchTime = new Date(m.match_time).getTime();
-            const currentTime = new Date().getTime();
-            const diffMinutes = (matchTime - currentTime) / (1000 * 60);
-
-            if (diffMinutes <= 5 && diffMinutes >= -60) {
-              if (m.room_id && m.room_pass) {
-                hostContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
-              } else {
-                hostContent = `<button class="join-btn" style="background:#eab308; color:#000;" onclick="updateRoomCredentials(${m.id})">⚡ Set Room ID & Password Now</button>`;
-              }
+            if (m.room_id && m.room_pass) {
+              hostContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
             } else {
-              hostContent = `<p style="color:#ef4444; font-size:12px; margin-top:5px;">🔒 Room credentials unlock 5 mins before start time.</p>`;
+              hostContent = `<button class="join-btn" style="background:#eab308; color:#000;" onclick="updateRoomCredentials(${m.id})">⚡ Set Room ID & Password Now</button>`;
             }
           }
 
@@ -568,18 +588,10 @@
         else if (isAcceptedGuest || myRequest) {
           let guestStatusUI = '';
           if (m.status === 'full' && isAcceptedGuest) {
-            const matchTime = new Date(m.match_time).getTime();
-            const currentTime = new Date().getTime();
-            const diffMinutes = (matchTime - currentTime) / (1000 * 60);
-
-            if (diffMinutes <= 5 && diffMinutes >= -60) {
-              if (m.room_id && m.room_pass) {
-                guestStatusUI = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
-              } else {
-                guestStatusUI = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Host is setting Room ID & Pass...</p>`;
-              }
+            if (m.room_id && m.room_pass) {
+              guestStatusUI = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
             } else {
-              guestStatusUI = `<p style="color:#22c55e; font-size:12px; margin-top:5px;">✅ Accepted! Room credentials unlock 5 mins before start.</p>`;
+              guestStatusUI = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Host is setting Room ID & Pass...</p>`;
             }
           } else {
             guestStatusUI = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Request Pending Host Acceptance...</p>`;
@@ -594,7 +606,7 @@
       });
     }
 
-    // DEPOSIT SUBMIT
+    // DEPOSIT SUBMIT (Rs. 2 Fee)
     document.getElementById('depositForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnDepositSubmit');
@@ -604,19 +616,21 @@
       const ref = document.getElementById('depRef').value;
       const screenshot = document.getElementById('depImgPreview').src;
 
+      const netAmount = amount - 2; // Rs. 2 Fee Deduction
+
       const { error } = await _supabase.from('deposits').insert([
-        { user_phone: String(currentUser.phone), user_name: currentUser.name, amount, ref, proof_img: screenshot, status: 'pending' }
+        { user_phone: String(currentUser.phone), user_name: currentUser.name, amount: netAmount, raw_amount: amount, ref, proof_img: screenshot, status: 'pending', created_at: new Date().toISOString() }
       ]);
 
       if(!error) {
-        alert("✅ Deposit Request Submitted!");
+        alert(`✅ Deposit Request Submitted! Net Balance Addition after Rs. 2 fee: Rs. ${netAmount}`);
         this.reset(); document.getElementById('depImgPreview').style.display = 'none';
         switchTab('history');
       } else alert("Error: " + error.message);
       btn.disabled = false;
     });
 
-    // WITHDRAW SUBMIT WITH 35% WINNING RULE
+    // WITHDRAW SUBMIT (35% Win Balance + Rs. 5 Fee)
     document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnWithdrawSubmit');
@@ -627,24 +641,21 @@
       const name = document.getElementById('witName').value;
       const amount = parseFloat(document.getElementById('witAmount').value);
 
-      const winningBal = currentUser.winning_balance || 0;
-      const depositBal = currentUser.balance || 0;
-      const totalBal = winningBal + depositBal;
+      const minWinRequired = amount * 0.35; // 35% Win Balance Rule
+      const userWinBal = currentUser.win_balance || 0;
 
-      if(totalBal < amount) { alert("❌ Insufficient Total Balance!"); btn.disabled = false; return; }
-
-      // 35% Rule Check
-      if (amount > winningBal) {
-        const requiredWinning = amount * 0.35;
-        if (winningBal < requiredWinning) {
-          alert(`❌ Withdrawal Rejected (35% Rule Violation):\n\nDeposit मिसाएर Rs. ${amount} निकाल्न कम्तिमा ३५% Winning Balance (Rs. ${requiredWinning.toFixed(1)}) हुनुपर्छ।\nतिम्रो Winning Balance: Rs. ${winningBal}`);
-          btn.disabled = false;
-          return;
-        }
+      if(userWinBal < minWinRequired) {
+        alert(`❌ 35% Win Balance Required!\nTo withdraw Rs. ${amount}, you need at least Rs. ${minWinRequired.toFixed(1)} Win Balance.\nYour Win Balance: Rs. ${userWinBal}`);
+        btn.disabled = false;
+        return;
       }
 
+      if(currentUser.balance < amount) { alert("❌ Insufficient Main Balance!"); btn.disabled = false; return; }
+
+      const netWithdraw = amount - 5; // Rs. 5 Fee Deduction
+
       const { error } = await _supabase.from('withdrawals').insert([
-        { user_phone: String(currentUser.phone), user_name: currentUser.name, method, number, acc_name: name, amount, status: 'pending' }
+        { user_phone: String(currentUser.phone), user_name: currentUser.name, method, number, acc_name: name, amount, net_amount: netWithdraw, status: 'pending', created_at: new Date().toISOString() }
       ]);
 
       if(!error) {
@@ -652,8 +663,9 @@
         await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
         currentUser.balance = newBal;
         document.getElementById('userBalance').innerText = newBal;
-        alert("✅ Withdraw Requested!"); this.reset(); switchTab('history');
-      }
+        alert(`✅ Withdraw Requested! (Rs. 5 Fee Deducted. You will receive: Rs. ${netWithdraw})`); 
+        this.reset(); switchTab('history');
+      } else alert("Error: " + error.message);
       btn.disabled = false;
     });
 
@@ -683,28 +695,36 @@
       });
     }
 
-    async function loadHistoryTab() {
+    // PLAYER HISTORY (Last 7 Days Only)
+    async function loadPlayerHistory() {
       if(!currentUser) return;
-      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false }).limit(15);
-      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason').eq('user_phone', String(currentUser.phone)).order('id', { ascending: false }).limit(15);
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const txContainer = document.getElementById('transactionHistoryList'); txContainer.innerHTML = '';
+      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason, created_at').eq('user_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
+      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason, created_at').eq('user_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
+
+      const txContainer = document.getElementById('playerHistoryList'); txContainer.innerHTML = '';
       let txList = [];
-      if(deps) deps.forEach(d => txList.push({ type: 'Deposit', amount: d.amount, status: d.status, reason: d.reason }));
-      if(wits) wits.forEach(w => txList.push({ type: 'Withdrawal', amount: w.amount, status: w.status, reason: w.reason }));
+      if(deps) deps.forEach(d => txList.push({ type: 'Deposit', amount: d.amount, status: d.status, reason: d.reason, date: new Date(d.created_at) }));
+      if(wits) wits.forEach(w => txList.push({ type: 'Withdrawal', amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at) }));
 
       if (txList.length === 0) {
-        txContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No transaction history found.</p>';
+        txContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No transaction history in the last 7 days.</p>';
         return;
       }
 
-      txList.forEach(t => {
+      txList.sort((a,b) => b.date - a.date).forEach(t => {
         let badge = t.status === 'approved' ? 'badge-approved' : (t.status === 'rejected' ? 'badge-rejected' : 'badge-pending');
-        txContainer.innerHTML += `<div class="history-card"><div style="display:flex; justify-content:space-between;"><b>${t.type}: Rs. ${t.amount}</b><span class="status-badge ${badge}">${t.status}</span></div>${t.reason ? `<div style="color:#ef4444; font-size:11px; margin-top:4px;">Reason: ${t.reason}</div>` : ''}</div>`;
+        txContainer.innerHTML += `
+          <div class="history-card">
+            <div style="display:flex; justify-content:space-between;"><b>${t.type}: Rs. ${t.amount}</b><span class="status-badge ${badge}">${t.status}</span></div>
+            <div style="font-size:10px; color:#94a3b8; margin-top:4px;">Date: ${t.date.toLocaleDateString()}</div>
+            ${t.reason ? `<div style="color:#ef4444; font-size:11px; margin-top:4px;">Reason: ${t.reason}</div>` : ''}
+          </div>`;
       });
     }
 
-    // SUPER FAST ADMIN LOAD WITH DOUBLE CLICK PROTECTION
+    // ADMIN GLOBAL DATA & ALL TIME HISTORY
     async function loadAdminData() {
       const { data: deposits, error } = await _supabase
         .from('deposits')
@@ -717,10 +737,7 @@
 
       if(error) {
         depContainer.innerHTML = `<p style="color:#ef4444; font-size:12px;">Error: ${error.message}</p>`;
-        return;
-      }
-
-      if(!deposits || deposits.length === 0) {
+      } else if(!deposits || deposits.length === 0) {
         depContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No pending deposits.</p>';
       } else {
         deposits.forEach(d => {
@@ -731,8 +748,8 @@
               <button style="background:#334155; color:#38bdf8; border:1px solid #38bdf8; padding:5px 8px; font-size:11px; border-radius:4px; margin-top:6px; cursor:pointer;" onclick="viewDepositProof(${d.id})">📷 View Screenshot</button>
               <div id="proof-container-${d.id}" style="margin-top:5px;"></div>
               <div class="action-row">
-                <button class="accept-btn" id="btn-dep-app-${d.id}" onclick="approveDeposit(${d.id}, '${d.user_phone}', ${d.amount})">Approve</button>
-                <button class="reject-btn" id="btn-dep-rej-${d.id}" onclick="rejectDeposit(${d.id})">Reject</button>
+                <button class="accept-btn" onclick="approveDeposit(${d.id}, '${d.user_phone}', ${d.amount})">Approve</button>
+                <button class="reject-btn" onclick="rejectDeposit(${d.id})">Reject</button>
               </div>
             </div>`;
         });
@@ -756,9 +773,31 @@
               <div><b>${w.user_name}</b> - Rs. ${w.amount} via <b>${w.method}</b> (${w.number})</div>
               <div style="font-size:11px; color:#94a3b8;">Name: ${w.acc_name}</div>
               <div class="action-row">
-                <button class="accept-btn" id="btn-wit-app-${w.id}" onclick="approveWithdraw(${w.id})">Mark Paid</button>
-                <button class="reject-btn" id="btn-wit-rej-${w.id}" onclick="rejectWithdraw(${w.id}, '${w.user_phone}', ${w.amount})">Reject & Refund</button>
+                <button class="accept-btn" onclick="approveWithdraw(${w.id})">Mark Paid</button>
+                <button class="reject-btn" onclick="rejectWithdraw(${w.id}, '${w.user_phone}', ${w.amount})">Reject & Refund</button>
               </div>
+            </div>`;
+        });
+      }
+
+      // GLOBAL ADMIN HISTORY (All Time)
+      const { data: allDeps } = await _supabase.from('deposits').select('*').order('id', { ascending: false });
+      const { data: allWits } = await _supabase.from('withdrawals').select('*').order('id', { ascending: false });
+
+      const adminHistContainer = document.getElementById('adminGlobalHistoryList');
+      adminHistContainer.innerHTML = '';
+
+      let globalList = [];
+      if(allDeps) allDeps.forEach(d => globalList.push({ type: 'Deposit', user: d.user_name, phone: d.user_phone, amount: d.amount, status: d.status }));
+      if(allWits) allWits.forEach(w => globalList.push({ type: 'Withdrawal', user: w.user_name, phone: w.user_phone, amount: w.amount, status: w.status }));
+
+      if(globalList.length === 0) {
+        adminHistContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No global transactions yet.</p>';
+      } else {
+        globalList.forEach(g => {
+          adminHistContainer.innerHTML += `
+            <div class="history-card">
+              <b>${g.user} (${g.phone})</b> - ${g.type}: Rs. ${g.amount} | Status: <b>${g.status}</b>
             </div>`;
         });
       }
@@ -776,80 +815,35 @@
       }
     }
 
-    // APPROVE DEPOSIT WITH DOUBLE-CLICK PROTECTION
-    async function approveDeposit(depId, userPhone, rawAmount) {
-      const btnApp = document.getElementById(`btn-dep-app-${depId}`);
-      const btnRej = document.getElementById(`btn-dep-rej-${depId}`);
-      
-      if(btnApp.disabled) return; // Prevent double click
+    async function approveDeposit(depId, userPhone, netAmount) {
       if(!confirm("Are you sure you want to APPROVE this Deposit?")) return;
-
-      btnApp.disabled = true;
-      btnRej.disabled = true;
-      btnApp.innerText = "Processing...";
-
-      const netAmount = rawAmount - 2;
-      
-      // Check if already approved in DB
-      const { data: depCheck } = await _supabase.from('deposits').select('status').eq('id', depId).single();
-      if(depCheck && depCheck.status !== 'pending') {
-        alert("⚠️ This request has already been processed!");
-        loadAdminData();
-        return;
-      }
-
       const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
       if(u) {
         await _supabase.from('users').update({ balance: u.balance + netAmount }).eq('phone', userPhone);
         await _supabase.from('deposits').update({ status: 'approved' }).eq('id', depId);
-        alert("✅ Deposit Approved!"); 
-        loadAdminData();
+        alert("✅ Approved!"); loadAdminData();
       }
     }
 
     async function rejectDeposit(depId) {
-      const btnApp = document.getElementById(`btn-dep-app-${depId}`);
-      const btnRej = document.getElementById(`btn-dep-rej-${depId}`);
-      
-      if(btnRej.disabled) return;
       if(!confirm("Are you sure you want to REJECT this Deposit?")) return;
-
       const choice = prompt("Select Reason (1: Fake Ref, 2: Payment Not Received, 3: Insufficient Amount):");
       if(choice) {
-        btnApp.disabled = true;
-        btnRej.disabled = true;
         await _supabase.from('deposits').update({ status: 'rejected', reason: DEPOSIT_REJECT_REASONS[parseInt(choice)-1] || "Rejected" }).eq('id', depId);
-        alert("❌ Deposit Rejected!"); loadAdminData();
+        alert("❌ Rejected!"); loadAdminData();
       }
     }
 
     async function approveWithdraw(witId) {
-      const btnApp = document.getElementById(`btn-wit-app-${witId}`);
-      const btnRej = document.getElementById(`btn-wit-rej-${witId}`);
-
-      if(btnApp.disabled) return;
       if(!confirm("Are you sure you want to MARK PAID this Withdrawal?")) return;
-
-      btnApp.disabled = true;
-      btnRej.disabled = true;
-      btnApp.innerText = "Processing...";
-
       await _supabase.from('withdrawals').update({ status: 'approved' }).eq('id', witId);
       alert("✅ Marked Paid!"); loadAdminData();
     }
 
     async function rejectWithdraw(witId, userPhone, amount) {
-      const btnApp = document.getElementById(`btn-wit-app-${witId}`);
-      const btnRej = document.getElementById(`btn-wit-rej-${witId}`);
-
-      if(btnRej.disabled) return;
       if(!confirm("Are you sure you want to REJECT & REFUND this Withdrawal?")) return;
-
       const choice = prompt("Select Reason (1: Invalid Account, 2: Name Mismatch, 3: Fraud):");
       if(choice) {
-        btnApp.disabled = true;
-        btnRej.disabled = true;
-
         const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
         if(u) await _supabase.from('users').update({ balance: u.balance + amount }).eq('phone', userPhone);
         await _supabase.from('withdrawals').update({ status: 'rejected', reason: WITHDRAW_REJECT_REASONS[parseInt(choice)-1] || "Rejected" }).eq('id', witId);
@@ -863,14 +857,14 @@
         .on('postgres_changes', { event: '*', schema: 'public' }, () => {
           if(activeTab === 'arena') loadMatches();
           if(activeTab === 'requests') loadRequestsTab();
-          if(activeTab === 'history') loadHistoryTab();
+          if(activeTab === 'history') loadPlayerHistory();
           if(currentUser) {
-            _supabase.from('users').select('balance, winning_balance').eq('phone', currentUser.phone).single().then(({data}) => {
+            _supabase.from('users').select('balance, win_balance').eq('phone', currentUser.phone).single().then(({data}) => {
               if(data) { 
                 currentUser.balance = data.balance; 
-                currentUser.winning_balance = data.winning_balance || 0;
+                currentUser.win_balance = data.win_balance; 
                 document.getElementById('userBalance').innerText = currentUser.balance; 
-                document.getElementById('userWinBalance').innerText = "Rs. " + currentUser.winning_balance; 
+                document.getElementById('userWinBalance').innerText = currentUser.win_balance || 0; 
               }
             });
           }
