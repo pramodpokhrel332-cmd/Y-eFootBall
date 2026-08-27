@@ -389,7 +389,7 @@
       e.preventDefault();
       const name = document.getElementById('regName').value.trim();
       const ownerId = document.getElementById('regOwnerId').value.trim();
-      const phone = document.getElementById('regPhone').value.trim();
+      const phone = String(document.getElementById('regPhone').value).trim();
       const pass = document.getElementById('regPass').value.trim();
 
       const { error } = await _supabase.from('users').insert([{ phone, name, owner_id: ownerId, pass, balance: 0, win_balance: 0 }]);
@@ -399,10 +399,10 @@
 
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      const phone = document.getElementById('loginPhone').value.trim();
+      const phone = String(document.getElementById('loginPhone').value).trim();
       const pass = document.getElementById('loginPass').value.trim();
 
-      const { data } = await _supabase.from('users').select('*').eq('phone', phone).eq('pass', pass).single();
+      const { data } = await _supabase.from('users').select('*').eq('phone', phone).eq('pass', pass).maybeSingle();
       if (data) {
         currentUser = data;
         document.getElementById('authScreen').style.display = 'none';
@@ -465,7 +465,7 @@
       const fee = parseFloat(document.getElementById('entryFee').value);
       const mTimeInput = document.getElementById('matchTime').value;
 
-      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', currentUser.phone).single();
+      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', String(currentUser.phone).trim()).maybeSingle();
       if(!freshUser || freshUser.balance < fee) { alert(`❌ Insufficient Balance!`); btn.disabled = false; return; }
 
       const formattedTime = new Date(mTimeInput).toISOString();
@@ -474,7 +474,7 @@
         match_name: mName,
         host_name: currentUser.name, 
         host_owner_id: currentUser.owner_id, 
-        host_phone: String(currentUser.phone), 
+        host_phone: String(currentUser.phone).trim(), 
         entry_fee: fee, 
         match_time: formattedTime,
         status: 'open',
@@ -486,7 +486,7 @@
         alert("❌ Error: " + error.message);
       } else {
         const newBal = freshUser.balance - fee;
-        await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
+        await _supabase.from('users').update({ balance: newBal }).eq('phone', String(currentUser.phone).trim());
         currentUser.balance = newBal;
         document.getElementById('userBalance').innerText = newBal;
 
@@ -498,21 +498,21 @@
     });
 
     async function sendJoinRequest(matchId) {
-      const { data: m } = await _supabase.from('matches').select('*').eq('id', matchId).single();
+      const { data: m } = await _supabase.from('matches').select('*').eq('id', matchId).maybeSingle();
       if(!m) return;
 
-      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', currentUser.phone).single();
+      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', String(currentUser.phone).trim()).maybeSingle();
       if(!freshUser || freshUser.balance < m.entry_fee) return alert("❌ Insufficient Balance!");
 
       let currentReqs = m.requests || [];
-      const alreadyRequested = currentReqs.some(r => String(r.phone) === String(currentUser.phone));
+      const alreadyRequested = currentReqs.some(r => String(r.phone).trim() === String(currentUser.phone).trim());
 
       if (alreadyRequested) {
         return alert("⚠️ You have already sent a join request for this match!");
       }
 
       currentReqs.push({
-        phone: String(currentUser.phone),
+        phone: String(currentUser.phone).trim(),
         name: currentUser.name,
         owner_id: currentUser.owner_id
       });
@@ -576,19 +576,20 @@
     }
 
     async function acceptGuestRequest(matchId, guestPhone, guestName, guestOwnerId, entryFee) {
+      const cleanGuestPhone = String(guestPhone).trim();
       if(!confirm(`Accept ${guestName}'s request? Rs. ${entryFee} will be deducted from their balance.`)) return;
 
-      const { data: guestUser } = await _supabase.from('users').select('balance').eq('phone', guestPhone).single();
+      const { data: guestUser } = await _supabase.from('users').select('balance').eq('phone', cleanGuestPhone).maybeSingle();
       if(!guestUser || guestUser.balance < entryFee) {
         return alert("❌ Opponent does not have enough balance anymore!");
       }
 
-      await _supabase.from('users').update({ balance: guestUser.balance - entryFee }).eq('phone', guestPhone);
+      await _supabase.from('users').update({ balance: guestUser.balance - entryFee }).eq('phone', cleanGuestPhone);
 
       const { error: updateErr } = await _supabase.from('matches').update({
         guest_name: guestName,
         guest_owner_id: guestOwnerId,
-        guest_phone: guestPhone,
+        guest_phone: cleanGuestPhone,
         status: 'full',
         updated_at: new Date().toISOString()
       }).eq('id', matchId);
@@ -613,6 +614,8 @@
     async function submitMatchResult(matchId, hostPhone, guestPhone) {
       const winnerPhone = prompt(`Who won this match?\nEnter Phone Number of Winner:\nHost: ${hostPhone}\nGuest: ${guestPhone}`);
       if(!winnerPhone) return;
+
+      const cleanWinnerPhone = String(winnerPhone).trim();
 
       const existingInput = document.getElementById('tempMatchFileInput');
       if(existingInput) existingInput.remove();
@@ -653,7 +656,7 @@
 
             const { error } = await _supabase.from('matches').update({
               result_img: base64Img,
-              claimed_winner: winnerPhone.trim(),
+              claimed_winner: cleanWinnerPhone,
               result_status: 'pending'
             }).eq('id', matchId);
 
@@ -693,7 +696,7 @@
         const title = m.match_name ? m.match_name : `Match #${m.id}`;
         
         let requests = m.requests || [];
-        const myRequest = requests.find(r => String(r.phone) === String(currentUser.phone));
+        const myRequest = requests.find(r => String(r.phone).trim() === String(currentUser.phone).trim());
 
         if (isHost || isAcceptedGuest || myRequest) {
           let hostContent = '';
@@ -764,13 +767,13 @@
       btn.disabled = true;
 
       const amount = parseFloat(document.getElementById('depAmount').value);
-      const ref = document.getElementById('depRef').value;
+      const ref = document.getElementById('depRef').value.trim();
       const screenshot = compressedImageData || document.getElementById('depImgPreview').src;
 
       const netAmount = amount - 2;
 
       const { error } = await _supabase.from('deposits').insert([
-        { user_phone: String(currentUser.phone), user_name: currentUser.name, amount: netAmount, raw_amount: amount, ref, proof_img: screenshot, status: 'pending', created_at: new Date().toISOString() }
+        { user_phone: String(currentUser.phone).trim(), user_name: currentUser.name, amount: netAmount, raw_amount: amount, ref, proof_img: screenshot, status: 'pending', created_at: new Date().toISOString() }
       ]);
 
       if(!error) {
@@ -789,13 +792,13 @@
       btn.disabled = true;
 
       const method = document.getElementById('witMethod').value;
-      const number = document.getElementById('witNumber').value;
-      const name = document.getElementById('witName').value;
+      const number = document.getElementById('witNumber').value.trim();
+      const name = document.getElementById('witName').value.trim();
       const amount = parseFloat(document.getElementById('witAmount').value);
 
       const minWinRequired = amount * 0.35;
       
-      const { data: freshUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', currentUser.phone).single();
+      const { data: freshUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', String(currentUser.phone).trim()).maybeSingle();
       const userWinBal = freshUser ? (freshUser.win_balance || 0) : (currentUser.win_balance || 0);
       const userMainBal = freshUser ? freshUser.balance : currentUser.balance;
 
@@ -810,12 +813,12 @@
       const netWithdraw = amount - 5;
 
       const { error } = await _supabase.from('withdrawals').insert([
-        { user_phone: String(currentUser.phone), user_name: currentUser.name, method, number, acc_name: name, amount, net_amount: netWithdraw, status: 'pending', created_at: new Date().toISOString() }
+        { user_phone: String(currentUser.phone).trim(), user_name: currentUser.name, method, number, acc_name: name, amount, net_amount: netWithdraw, status: 'pending', created_at: new Date().toISOString() }
       ]);
 
       if(!error) {
         const newBal = userMainBal - amount;
-        await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
+        await _supabase.from('users').update({ balance: newBal }).eq('phone', String(currentUser.phone).trim());
         currentUser.balance = newBal;
         document.getElementById('userBalance').innerText = newBal;
         alert(`✅ Withdraw Requested! (Rs. 5 Fee Deducted. You will receive: Rs. ${netWithdraw})`); 
@@ -851,15 +854,16 @@
 
     async function loadPlayerHistory() {
       if (!currentUser) return;
+      const userPhoneStr = String(currentUser.phone).trim();
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const txContainer = document.getElementById('playerHistoryList');
       txContainer.innerHTML = 'Loading history...';
 
-      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason, created_at').eq('user_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
-      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason, created_at').eq('user_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
+      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason, created_at').eq('user_phone', userPhoneStr).gte('created_at', sevenDaysAgo);
+      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason, created_at').eq('user_phone', userPhoneStr).gte('created_at', sevenDaysAgo);
       
-      const { data: hostMatches } = await _supabase.from('matches').select('*').eq('host_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
-      const { data: guestMatches } = await _supabase.from('matches').select('*').eq('guest_phone', String(currentUser.phone)).gte('created_at', sevenDaysAgo);
+      const { data: hostMatches } = await _supabase.from('matches').select('*').eq('host_phone', userPhoneStr).gte('created_at', sevenDaysAgo);
+      const { data: guestMatches } = await _supabase.from('matches').select('*').eq('guest_phone', userPhoneStr).gte('created_at', sevenDaysAgo);
 
       let historyList = [];
 
@@ -871,8 +875,8 @@
       const now = new Date().getTime();
 
       for (let m of uniqueMatches) {
-        const isHost = String(m.host_phone) === String(currentUser.phone);
-        const isGuest = String(m.guest_phone) === String(currentUser.phone);
+        const isHost = String(m.host_phone).trim() === userPhoneStr;
+        const isGuest = String(m.guest_phone).trim() === userPhoneStr;
         const opponent = isHost ? (m.guest_name || 'Waiting...') : m.host_name;
         const title = m.match_name ? m.match_name : `Match #${m.id}`;
         
@@ -943,16 +947,26 @@
       });
     }
 
+    // FIX FOR "Winner user not found!" BUG
     async function approveMatchWinner(matchId, winnerPhone, prizeAmount) {
-      if(!confirm(`Approve Winner (${winnerPhone}) and credit Rs. ${prizeAmount} Win Balance?`)) return;
+      const cleanWinnerPhone = String(winnerPhone).trim();
+      
+      if(!confirm(`Approve Winner (${cleanWinnerPhone}) and credit Rs. ${prizeAmount} Win Balance?`)) return;
 
-      const { data: wUser, error: uErr } = await _supabase.from('users').select('balance, win_balance').eq('phone', winnerPhone).single();
-      if(uErr || !wUser) return alert("Winner user not found!");
+      const { data: wUser, error: uErr } = await _supabase
+        .from('users')
+        .select('balance, win_balance')
+        .eq('phone', cleanWinnerPhone)
+        .maybeSingle();
+
+      if(uErr || !wUser) {
+        return alert(`❌ Winner user not found! (Searched for: ${cleanWinnerPhone})`);
+      }
 
       const newWinBal = (wUser.win_balance || 0) + parseFloat(prizeAmount);
       const newMainBal = wUser.balance + parseFloat(prizeAmount);
 
-      await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', winnerPhone);
+      await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', cleanWinnerPhone);
       
       const { error: mErr } = await _supabase.from('matches').update({
         status: 'completed',
@@ -997,14 +1011,15 @@
       } else {
         resMatches.forEach(m => {
           const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
+          const cleanWinner = String(m.claimed_winner).trim();
           resContainer.innerHTML += `
             <div class="req-item">
               <div><b>Match #${m.id} (${m.match_name || '1v1'})</b></div>
               <div style="font-size:12px; margin-top:3px;">Host: ${m.host_name} (${m.host_phone}) | Guest: ${m.guest_name} (${m.guest_phone})</div>
-              <div style="font-size:12px; color:#22c55e; margin-top:2px;">Claimed Winner: <b>${m.claimed_winner}</b> | Prize: <b>Rs. ${prize}</b></div>
+              <div style="font-size:12px; color:#22c55e; margin-top:2px;">Claimed Winner: <b>${cleanWinner}</b> | Prize: <b>Rs. ${prize}</b></div>
               ${m.result_img ? `<img src="${m.result_img}" style="width:100%; max-height:220px; object-fit:contain; border-radius:6px; margin-top:8px; border:1px solid #38bdf8;">` : ''}
               <div class="action-row">
-                <button class="accept-btn" onclick="approveMatchWinner(${m.id}, '${m.claimed_winner}', ${prize})">Approve Winner & Pay</button>
+                <button class="accept-btn" onclick="approveMatchWinner(${m.id}, '${cleanWinner}', ${prize})">Approve Winner & Pay</button>
                 <button class="reject-btn" onclick="rejectMatchResult(${m.id})">Reject Result</button>
               </div>
             </div>`;
@@ -1086,7 +1101,7 @@
       const container = document.getElementById(`proof-container-${depId}`);
       container.innerHTML = '<span style="font-size:11px; color:#eab308;">Loading image...</span>';
 
-      const { data } = await _supabase.from('deposits').select('proof_img').eq('id', depId).single();
+      const { data } = await _supabase.from('deposits').select('proof_img').eq('id', depId).maybeSingle();
       if(data && data.proof_img) {
         container.innerHTML = `<img src="${data.proof_img}" style="width:100%; max-height:250px; object-fit:contain; border-radius:6px; border:1px solid #38bdf8; margin-top:5px;">`;
       } else {
@@ -1095,10 +1110,11 @@
     }
 
     async function approveDeposit(depId, userPhone, netAmount) {
+      const cleanPhone = String(userPhone).trim();
       if(!confirm("Are you sure you want to APPROVE this Deposit?")) return;
-      const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
+      const { data: u } = await _supabase.from('users').select('balance').eq('phone', cleanPhone).maybeSingle();
       if(u) {
-        await _supabase.from('users').update({ balance: u.balance + netAmount }).eq('phone', userPhone);
+        await _supabase.from('users').update({ balance: u.balance + netAmount }).eq('phone', cleanPhone);
         await _supabase.from('deposits').update({ status: 'approved' }).eq('id', depId);
         alert("✅ Approved!"); loadAdminData();
       }
@@ -1134,14 +1150,15 @@
     }
 
     async function rejectWithdraw(witId, userPhone, amount) {
+      const cleanPhone = String(userPhone).trim();
       if(!confirm("Are you sure you want to REJECT & REFUND this Withdrawal?")) return;
       const choice = prompt("Select Reason:\n1: Invalid Account Number\n2: Name Mismatch\n3: Rule Violated\n4: Suspicious Activity");
       if(choice) {
         const selectedIndex = parseInt(choice.trim()) - 1;
         const selectedReason = WITHDRAW_REJECT_REASONS[selectedIndex] || "Rejected by Admin";
 
-        const { data: u } = await _supabase.from('users').select('balance').eq('phone', userPhone).single();
-        if(u) await _supabase.from('users').update({ balance: u.balance + amount }).eq('phone', userPhone);
+        const { data: u } = await _supabase.from('users').select('balance').eq('phone', cleanPhone).maybeSingle();
+        if(u) await _supabase.from('users').update({ balance: u.balance + amount }).eq('phone', cleanPhone);
         await _supabase.from('withdrawals').update({ status: 'rejected', reason: selectedReason }).eq('id', witId);
         alert("❌ Rejected & Refunded!"); loadAdminData();
       }
@@ -1154,7 +1171,7 @@
           if(activeTab === 'requests') loadRequestsTab();
           if(activeTab === 'history') loadPlayerHistory();
           if(currentUser) {
-            _supabase.from('users').select('balance, win_balance').eq('phone', currentUser.phone).single().then(({data}) => {
+            _supabase.from('users').select('balance, win_balance').eq('phone', String(currentUser.phone).trim()).maybeSingle().then(({data}) => {
               if(data) { 
                 currentUser.balance = data.balance; 
                 currentUser.win_balance = data.win_balance; 
