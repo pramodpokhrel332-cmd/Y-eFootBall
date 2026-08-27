@@ -46,9 +46,10 @@
     .match-header { display: flex; justify-content: space-between; font-weight: bold; }
     .match-info { font-size: 12px; color: #94a3b8; margin-top: 5px; }
     .join-btn { background: #22c55e; padding: 8px 12px; font-size: 12px; margin-top: 8px; border-radius: 4px; border: none; color: #fff; font-weight: bold; width: 100%; cursor: pointer; }
-    .action-row { display: flex; gap: 8px; margin-top: 8px; }
-    .accept-btn { flex: 2; background: #22c55e; color: #fff; padding: 8px; font-size: 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
-    .reject-btn { flex: 1; background: #ef4444; color: #fff; padding: 8px; font-size: 12px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
+    
+    .action-row { display: flex; gap: 8px; margin-top: 12px; width: 100%; }
+    .accept-btn { flex: 1; background: #22c55e; color: #fff; padding: 10px; font-size: 13px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; text-align: center; }
+    .reject-btn { flex: 1; background: #ef4444; color: #fff; padding: 10px; font-size: 13px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; text-align: center; }
     
     .page { display: none; }
     .page.active { display: block; }
@@ -343,7 +344,7 @@
           let width = img.width;
           let height = img.height;
           
-          const maxDim = 800;
+          const maxDim = 600;
           if (width > height && width > maxDim) {
             height = Math.round((height * maxDim) / width);
             width = maxDim;
@@ -357,7 +358,7 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          compressedImageData = canvas.toDataURL('image/jpeg', 0.6);
+          compressedImageData = canvas.toDataURL('image/jpeg', 0.5);
 
           const previewImg = document.getElementById('depImgPreview');
           if (previewImg) {
@@ -541,7 +542,7 @@
       const now = new Date().getTime();
 
       matches.forEach(m => {
-        if(m.status === 'completed' || m.status === 'expired') return;
+        if(m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') return;
         
         const startTime = new Date(m.match_time).getTime();
         if (now >= startTime + (30 * 60 * 1000)) return;
@@ -610,7 +611,7 @@
     }
 
     async function submitMatchResult(matchId, hostPhone, guestPhone) {
-      const winnerPhone = prompt(`Who won this match?\nEnter Phone Number of Winner:\n1: Host (${hostPhone})\n2: Guest (${guestPhone})`);
+      const winnerPhone = prompt(`Who won this match?\nEnter Phone Number of Winner:\nHost: ${hostPhone}\nGuest: ${guestPhone}`);
       if(!winnerPhone) return;
 
       const fileInput = document.createElement('input');
@@ -625,14 +626,14 @@
           const img = new Image();
           img.onload = async function() {
             const canvas = document.createElement('canvas');
-            let width = img.width, height = img.height, maxDim = 800;
+            let width = img.width, height = img.height, maxDim = 500;
             if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
             else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
             canvas.width = width; canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
 
-            const base64Img = canvas.toDataURL('image/jpeg', 0.6);
+            const base64Img = canvas.toDataURL('image/jpeg', 0.5);
 
             const { error } = await _supabase.from('matches').update({
               result_img: base64Img,
@@ -641,9 +642,9 @@
             }).eq('id', matchId);
 
             if(!error) {
-              alert("✅ Result Screenshot Submitted! Admin will verify and award prize shortly.");
+              alert("✅ Result Screenshot Submitted Successfully! Admin will verify and credit prize shortly.");
               loadRequestsTab();
-            } else alert("Error: " + error.message);
+            } else alert("Error Submitting Result: " + error.message);
           };
           img.src = evt.target.result;
         };
@@ -660,7 +661,7 @@
       const now = new Date().getTime();
 
       matches.forEach(m => {
-        if (m.status === 'completed' || m.status === 'expired') return;
+        if (m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') return;
 
         const startTime = new Date(m.match_time).getTime();
         const autoMoveTime = startTime + (30 * 60 * 1000); 
@@ -686,7 +687,7 @@
                 hostContent += `
                   <div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:6px; margin-top:4px; border-radius:4px;">
                     <span style="font-size:12px;">${r.name} (${r.owner_id})</span>
-                    <button class="accept-btn" style="padding:4px 8px;" onclick="acceptGuestRequest(${m.id}, '${r.phone}', '${r.name}', '${r.owner_id}', ${m.entry_fee})">Accept</button>
+                    <button class="accept-btn" style="padding:4px 8px; font-size:11px;" onclick="acceptGuestRequest(${m.id}, '${r.phone}', '${r.name}', '${r.owner_id}', ${m.entry_fee})">Accept</button>
                   </div>`;
               });
               hostContent += `</div>`;
@@ -753,7 +754,7 @@
       ]);
 
       if(!error) {
-        alert(`✅ Deposit Request Submitted Immediately! Net Balance Addition: Rs. ${netAmount}`);
+        alert(`✅ Deposit Request Submitted! Net Balance Addition: Rs. ${netAmount}`);
         this.reset(); compressedImageData = null; document.getElementById('depImgPreview').style.display = 'none';
         switchTab('history');
       } else alert("Error: " + error.message);
@@ -862,7 +863,7 @@
         let matchStatus = m.status;
         let isExpired = false;
 
-        if (now >= autoMoveTime && m.status !== 'completed' && m.status !== 'expired') {
+        if (now >= autoMoveTime && m.status !== 'completed' && m.status !== 'expired' && m.status !== 'rejected') {
           if (now >= expiryTime) {
             isExpired = true;
             matchStatus = 'expired';
@@ -871,7 +872,7 @@
         }
 
         let historyAction = '';
-        if (now >= autoMoveTime && !isExpired && m.status !== 'completed' && (isHost || isGuest)) {
+        if (now >= autoMoveTime && !isExpired && m.status !== 'completed' && m.status !== 'rejected' && (isHost || isGuest)) {
           if (m.result_status === 'pending') {
             historyAction = `<p style="color:#f59e0b; font-size:11px; margin-top:4px;">⏳ Screenshot Submitted! Admin verification pending...</p>`;
           } else {
@@ -925,21 +926,25 @@
     async function approveMatchWinner(matchId, winnerPhone, prizeAmount) {
       if(!confirm(`Approve Winner (${winnerPhone}) and credit Rs. ${prizeAmount} Win Balance?`)) return;
 
-      const { data: wUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', winnerPhone).single();
-      if(!wUser) return alert("Winner user not found!");
+      const { data: wUser, error: uErr } = await _supabase.from('users').select('balance, win_balance').eq('phone', winnerPhone).single();
+      if(uErr || !wUser) return alert("Winner user not found!");
 
-      const newWinBal = (wUser.win_balance || 0) + prizeAmount;
-      const newMainBal = wUser.balance + prizeAmount;
+      const newWinBal = (wUser.win_balance || 0) + parseFloat(prizeAmount);
+      const newMainBal = wUser.balance + parseFloat(prizeAmount);
 
       await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', winnerPhone);
       
-      await _supabase.from('matches').update({
+      const { error: mErr } = await _supabase.from('matches').update({
         status: 'completed',
         result_status: 'approved'
       }).eq('id', matchId);
 
-      alert("🎉 Match Settled & Winner Credited!");
-      loadAdminData();
+      if(!mErr) {
+        alert("🎉 Match Settled & Winner Credited Successfully!");
+        loadAdminData();
+      } else {
+        alert("Error updating match status: " + mErr.message);
+      }
     }
 
     async function rejectMatchResult(matchId) {
@@ -953,7 +958,7 @@
       }).eq('id', matchId);
 
       if(!error) {
-        alert("❌ Match Result Rejected!");
+        alert("❌ Match Result Rejected Successfully!");
         loadAdminData();
       } else {
         alert("Error: " + error.message);
@@ -975,10 +980,10 @@
           resContainer.innerHTML += `
             <div class="req-item">
               <div><b>Match #${m.id} (${m.match_name || '1v1'})</b></div>
-              <div style="font-size:12px;">Host: ${m.host_name} (${m.host_phone}) | Guest: ${m.guest_name} (${m.guest_phone})</div>
-              <div style="font-size:12px; color:#22c55e;">Claimed Winner: <b>${m.claimed_winner}</b> | Prize: <b>Rs. ${prize}</b></div>
-              ${m.result_img ? `<img src="${m.result_img}" style="width:100%; max-height:200px; object-fit:contain; border-radius:6px; margin-top:6px; border:1px solid #38bdf8;">` : ''}
-              <div class="action-row" style="margin-top:8px;">
+              <div style="font-size:12px; margin-top:3px;">Host: ${m.host_name} (${m.host_phone}) | Guest: ${m.guest_name} (${m.guest_phone})</div>
+              <div style="font-size:12px; color:#22c55e; margin-top:2px;">Claimed Winner: <b>${m.claimed_winner}</b> | Prize: <b>Rs. ${prize}</b></div>
+              ${m.result_img ? `<img src="${m.result_img}" style="width:100%; max-height:220px; object-fit:contain; border-radius:6px; margin-top:8px; border:1px solid #38bdf8;">` : ''}
+              <div class="action-row">
                 <button class="accept-btn" onclick="approveMatchWinner(${m.id}, '${m.claimed_winner}', ${prize})">Approve Winner & Pay</button>
                 <button class="reject-btn" onclick="rejectMatchResult(${m.id})">Reject Result</button>
               </div>
