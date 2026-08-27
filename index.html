@@ -62,11 +62,23 @@
     .badge-approved { background: #22c55e; color: #000; }
     .badge-rejected { background: #ef4444; color: #fff; }
     .history-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 12px; }
-    .news-banner { background: linear-gradient(135deg, #0284c7, #1e1b4b); border: 1px solid #38bdf8; border-radius: 12px; padding: 14px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2); }
-    .news-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    
+    /* Scrollable History Box Design */
+    .history-scroll-box {
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .history-scroll-box::-webkit-scrollbar { width: 5px; }
+    .history-scroll-box::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+    .news-banner { background: linear-gradient(135deg, #0284c7, #1e1b4b); border: 1px solid #38bdf8; border-radius: 12px; padding: 14px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2); position: relative; }
+    .news-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; justify-content: space-between; }
     .news-icon { font-size: 24px; background: rgba(255,255,255,0.1); padding: 6px; border-radius: 8px; }
-    .news-title { font-size: 15px; font-weight: bold; color: #f0f9ff; }
+    .news-title { font-size: 15px; font-weight: bold; color: #f0f9ff; flex-grow: 1; margin-left: 8px; }
     .news-body { font-size: 13px; color: #e0f2fe; line-height: 1.4; margin-top: 4px; }
+    .delete-news-btn { background: #ef4444; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+    
     .img-preview { width: 100%; max-height: 200px; object-fit: contain; border-radius: 6px; margin-top: 8px; border: 1px solid #334155; display: none; }
     
     .tourn-subtabs { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -213,21 +225,22 @@
       </div>
     </div>
 
-    <!-- DEDICATED MATCH HISTORY TAB -->
+    <!-- DEDICATED MATCH HISTORY TAB (WITH AUTO-SCROLL & ID SEARCH) -->
     <div id="matchHistory" class="page">
       <div class="card" style="border-color: #22c55e;">
         <h2 style="color: #22c55e;">⚽ Last 7 Days Match History</h2>
         <label>🔍 Search Match ID (Last 4 Digits):</label>
-        <input type="text" id="matchHashFilter" placeholder="e.g. 1042" maxlength="4" oninput="loadMatchHistoryOnly()" style="margin-bottom: 12px;">
-        <div id="matchHistoryContainer">Loading match history...</div>
+        <input type="text" id="matchHashFilter" placeholder="Type ID to filter or scroll below..." maxlength="4" oninput="loadMatchHistoryOnly()" style="margin-bottom: 12px;">
+        
+        <div id="matchHistoryContainer" class="history-scroll-box">Loading match history...</div>
       </div>
     </div>
 
-    <!-- DEDICATED WALLET HISTORY TAB -->
+    <!-- DEDICATED WALLET HISTORY TAB (WITH AUTO-SCROLL) -->
     <div id="walletHistory" class="page">
       <div class="card" style="border-color: #38bdf8;">
         <h2>💳 Last 7 Days Wallet History (Deposits & Withdrawals)</h2>
-        <div id="walletHistoryContainer">Loading wallet history...</div>
+        <div id="walletHistoryContainer" class="history-scroll-box">Loading wallet history...</div>
       </div>
     </div>
 
@@ -655,7 +668,6 @@
         if(m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') return;
         
         const startTime = new Date(m.match_time).getTime();
-        // Match starts + 30 Mins -> Disappears from Arena Tab
         if (now >= startTime + (30 * 60 * 1000)) return;
 
         const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
@@ -718,7 +730,6 @@
       if(!error) { alert("✅ Room details updated!"); loadRequestsTab(); }
     }
 
-    // LOAD REQUESTS TAB (STRICT 30 MIN CLEAR)
     async function loadRequestsTab() {
       const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false }).limit(25);
       const container = document.getElementById('requestsList'); container.innerHTML = '';
@@ -732,7 +743,6 @@
         const startTime = new Date(m.match_time).getTime();
         const autoMoveTime = startTime + (30 * 60 * 1000); 
 
-        // REQUEST CLEAR LOGIC: Match time + 30 mins pachhi Requests Tab bata auto-remove hunxa!
         if (now >= autoMoveTime) return;
 
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
@@ -798,13 +808,12 @@
       }
     }
 
-    // EXCLUSIVE MATCH HISTORY TAB (LAST 7 DAYS)
+    // UPDATED EXCLUSIVE MATCH HISTORY TAB (LAST 7 DAYS + SCROLLABLE + SEARCH FILTER)
     async function loadMatchHistoryOnly() {
       if (!currentUser) return;
       const userPhoneClean = String(currentUser.phone).trim();
       const searchHash = document.getElementById('matchHashFilter') ? document.getElementById('matchHashFilter').value.trim() : '';
       const container = document.getElementById('matchHistoryContainer');
-      container.innerHTML = 'Loading match history...';
 
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const now = new Date().getTime();
@@ -815,12 +824,13 @@
       const allMatches = [...(hostMatches || []), ...(guestMatches || [])];
       let uniqueMatches = Array.from(new Set(allMatches.map(m => m.id))).map(id => allMatches.find(m => m.id === id));
 
+      // ID Search Logic (Empty भए automatic सबै history scroll भएर आउँछ)
       if (searchHash !== '') {
-        uniqueMatches = uniqueMatches.filter(m => String(m.id).includes(searchHash));
+        uniqueMatches = uniqueMatches.filter(m => String(m.id).endsWith(searchHash) || String(m.id).includes(searchHash));
       }
 
       if (uniqueMatches.length === 0) {
-        container.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No match history found for the last 7 days.</p>';
+        container.innerHTML = '<p style="font-size:12px; color:#94a3b8; text-align:center; padding:10px;">No match history found for the last 7 days.</p>';
         return;
       }
 
@@ -881,7 +891,6 @@
       if (!currentUser) return;
       const userPhoneClean = String(currentUser.phone).trim();
       const container = document.getElementById('walletHistoryContainer');
-      container.innerHTML = 'Loading wallet history...';
 
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -893,7 +902,7 @@
       if (wits) wits.forEach(w => walletList.push({ type: '💸 Withdrawal', amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at) }));
 
       if (walletList.length === 0) {
-        container.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No deposits or withdrawals in the last 7 days.</p>';
+        container.innerHTML = '<p style="font-size:12px; color:#94a3b8; text-align:center; padding:10px;">No deposits or withdrawals in the last 7 days.</p>';
         return;
       }
 
@@ -985,6 +994,25 @@
       else alert("Error: " + error.message);
     });
 
+    // NEW FUNCTION: DELETE ANNOUNCEMENT (WITH ADMIN PIN VERIFICATION)
+    async function deleteAnnouncement(newsId) {
+      const pin = prompt("🔑 Enter Admin PIN to Delete Notice:");
+      if (pin !== ADMIN_PIN) {
+        if (pin !== null) alert("❌ Wrong PIN!");
+        return;
+      }
+
+      if (!confirm("Are you sure you want to delete this notice?")) return;
+
+      const { error } = await _supabase.from('announcements').delete().eq('id', newsId);
+      if (!error) {
+        alert("🗑️ Announcement Deleted!");
+        loadNews();
+      } else {
+        alert("Error Deleting Notice: " + error.message);
+      }
+    }
+
     async function loadNews() {
       const { data: newsList } = await _supabase.from('announcements').select('*').order('id', { ascending: false }).limit(10);
       const headerContainer = document.getElementById('latestNewsHeaderBox');
@@ -993,10 +1021,26 @@
       if(!newsList || newsList.length === 0) return;
 
       const latest = newsList[0];
-      headerContainer.innerHTML = `<div class="news-banner"><div class="news-header"><span class="news-icon">📢</span><div class="news-title">${latest.title}</div></div><div class="news-body">${latest.content}</div></div>`;
+      headerContainer.innerHTML = `
+        <div class="news-banner">
+          <div class="news-header">
+            <span class="news-icon">📢</span>
+            <div class="news-title">${latest.title}</div>
+            <button class="delete-news-btn" onclick="deleteAnnouncement(${latest.id})">🗑️ Delete</button>
+          </div>
+          <div class="news-body">${latest.content}</div>
+        </div>`;
 
       newsList.forEach(n => {
-        newsPageContainer.innerHTML += `<div class="news-banner"><div class="news-header"><span class="news-icon">🔔</span><div class="news-title">${n.title}</div></div><div class="news-body">${n.content}</div></div>`;
+        newsPageContainer.innerHTML += `
+          <div class="news-banner">
+            <div class="news-header">
+              <span class="news-icon">🔔</span>
+              <div class="news-title">${n.title}</div>
+              <button class="delete-news-btn" onclick="deleteAnnouncement(${n.id})">🗑️ Delete</button>
+            </div>
+            <div class="news-body">${n.content}</div>
+          </div>`;
       });
     }
 
@@ -1195,6 +1239,9 @@
               }
             });
           }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
+          loadNews();
         })
         .subscribe();
     }
