@@ -73,14 +73,17 @@
     .tourn-subbtn { flex: 1; padding: 6px; background: #0f172a; border: 1px solid #334155; color: #94a3b8; font-weight: bold; border-radius: 6px; font-size: 12px; cursor: pointer; }
     .tourn-subbtn.active { background: #38bdf8; color: #000; border-color: #38bdf8; }
 
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 2000; padding: 15px; }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 2000; padding: 15px; }
     .modal-overlay.active { display: flex; }
-    .modal-content { background: #1e293b; border: 1px solid #38bdf8; border-radius: 12px; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .modal-content { background: #1e293b; border: 1px solid #38bdf8; border-radius: 12px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 12px; }
     .close-modal-btn { background: #ef4444; border: none; color: #fff; font-size: 14px; padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; }
     .rule-list { list-style-type: none; font-size: 13px; color: #cbd5e1; }
     .rule-list li { margin-bottom: 10px; border-bottom: 1px dashed #334155; padding-bottom: 8px; line-height: 1.4; }
     .rule-list b { color: #38bdf8; }
+
+    .winner-opt-card { background:#0f172a; border:1px solid #334155; padding:10px; border-radius:8px; margin-top:8px; display:flex; align-items:center; gap:10px; cursor:pointer; }
+    .winner-opt-card input { width:auto; margin:0; }
   </style>
 </head>
 <body>
@@ -313,6 +316,42 @@
     </div>
   </div>
 
+  <!-- RESULT UPLOAD MODAL (FIXED FOR ALL MOBIES) -->
+  <div id="resultModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 style="color:#38bdf8; margin:0; font-size:16px;">📸 Submit Match Result</h2>
+        <button class="close-modal-btn" onclick="closeResultModal()">X</button>
+      </div>
+      <form id="resultSubmitForm">
+        <input type="hidden" id="modalMatchId">
+        <label style="color:#f59e0b; font-weight:bold;">1. Select Winner:</label>
+        
+        <label class="winner-opt-card">
+          <input type="radio" name="winnerRadio" id="optHost" required>
+          <div>
+            <b style="color:#38bdf8;" id="hostLabelName">Host Name</b>
+            <div style="font-size:11px; color:#94a3b8;" id="hostLabelPhone">Phone</div>
+          </div>
+        </label>
+
+        <label class="winner-opt-card">
+          <input type="radio" name="winnerRadio" id="optGuest" required>
+          <div>
+            <b style="color:#38bdf8;" id="guestLabelName">Guest Name</b>
+            <div style="font-size:11px; color:#94a3b8;" id="guestLabelPhone">Phone</div>
+          </div>
+        </label>
+
+        <label style="color:#22c55e; font-weight:bold; margin-top:15px;">2. Upload Scorecard Screenshot:</label>
+        <input type="file" id="modalResultFile" accept="image/*" required onchange="compressResultImg(this)">
+        <img id="modalResultImgPreview" class="img-preview" alt="Score Preview">
+
+        <button type="submit" id="btnSubmitResultModal" class="primary-btn" style="background:#22c55e; margin-top:15px;">Upload & Send to Admin</button>
+      </form>
+    </div>
+  </div>
+
   <a href="https://wa.me/9779847430292" class="whatsapp-btn" target="_blank">💬 WhatsApp Support</a>
 
   <script>
@@ -325,12 +364,88 @@
     let activeTab = 'arena';
     let currentTournTab = 'open';
     let compressedImageData = null;
+    let compressedResultData = null;
 
     const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Ref Code", "Payment Not Received", "Insufficient Amount", "Duplicate Submission"];
     const WITHDRAW_REJECT_REASONS = ["Invalid Account Number", "Name Mismatch", "Rule Violated", "Suspicious Activity"];
 
     function openRulesModal() { document.getElementById('rulesModal').classList.add('active'); }
     function closeRulesModal() { document.getElementById('rulesModal').classList.remove('active'); }
+
+    function openResultModal(matchId, hostPhone, hostName, guestPhone, guestName) {
+      document.getElementById('modalMatchId').value = matchId;
+      document.getElementById('hostLabelName').innerText = "Host: " + hostName;
+      document.getElementById('hostLabelPhone').innerText = hostPhone;
+      document.getElementById('optHost').value = String(hostPhone).trim();
+
+      document.getElementById('guestLabelName').innerText = "Guest: " + guestName;
+      document.getElementById('guestLabelPhone').innerText = guestPhone;
+      document.getElementById('optGuest').value = String(guestPhone).trim();
+
+      document.getElementById('optHost').checked = false;
+      document.getElementById('optGuest').checked = false;
+      document.getElementById('modalResultFile').value = '';
+      document.getElementById('modalResultImgPreview').style.display = 'none';
+      compressedResultData = null;
+
+      document.getElementById('resultModal').classList.add('active');
+    }
+
+    function closeResultModal() { document.getElementById('resultModal').classList.remove('active'); }
+
+    function compressResultImg(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          let width = img.width, height = img.height, maxDim = 500;
+          if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
+          else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          compressedResultData = canvas.toDataURL('image/jpeg', 0.5);
+          const previewImg = document.getElementById('modalResultImgPreview');
+          previewImg.src = compressedResultData;
+          previewImg.style.display = 'block';
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.getElementById('resultSubmitForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmitResultModal');
+      btn.disabled = true; btn.innerText = "Uploading...";
+
+      const matchId = document.getElementById('modalMatchId').value;
+      const selectedRadio = document.querySelector('input[name="winnerRadio"]:checked');
+      if(!selectedRadio) { alert("Please select a winner!"); btn.disabled = false; return; }
+
+      const winnerPhone = String(selectedRadio.value).trim();
+      if(!compressedResultData) { alert("Please select screenshot image!"); btn.disabled = false; return; }
+
+      const { error } = await _supabase.from('matches').update({
+        result_img: compressedResultData,
+        claimed_winner: winnerPhone,
+        result_status: 'pending'
+      }).eq('id', matchId);
+
+      if(!error) {
+        alert("✅ Result Screenshot Submitted Successfully! Admin will verify and credit prize shortly.");
+        closeResultModal();
+        if(activeTab === 'requests') loadRequestsTab();
+        if(activeTab === 'history') loadPlayerHistory();
+      } else alert("Error Submitting Result: " + error.message);
+
+      btn.disabled = false; btn.innerText = "Upload & Send to Admin";
+    });
 
     function compressAndPreviewImg(input) {
       const file = input.files[0];
@@ -341,30 +456,17 @@
         const img = new Image();
         img.onload = function() {
           const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          const maxDim = 600;
-          if (width > height && width > maxDim) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else if (height > maxDim) {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
+          let width = img.width, height = img.height, maxDim = 600;
+          if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
+          else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
 
-          canvas.width = width;
-          canvas.height = height;
+          canvas.width = width; canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
           compressedImageData = canvas.toDataURL('image/jpeg', 0.5);
-
           const previewImg = document.getElementById('depImgPreview');
-          if (previewImg) {
-            previewImg.src = compressedImageData;
-            previewImg.style.display = 'block';
-          }
+          if (previewImg) { previewImg.src = compressedImageData; previewImg.style.display = 'block'; }
         };
         img.src = e.target.result;
       };
@@ -611,60 +713,6 @@
       if(!error) { alert("✅ Room details updated and shared!"); loadRequestsTab(); }
     }
 
-    // UPDATE: Select Winner Options (Host/Guest Selector to prevent Typo)
-    async function submitMatchResult(matchId, hostPhone, guestPhone) {
-      const hPhone = String(hostPhone).trim();
-      const gPhone = String(guestPhone).trim();
-
-      const choice = prompt(`Select Winner of Match #${matchId}:\n\nType 1 for Host (${hPhone})\nType 2 for Guest (${gPhone})`);
-      
-      let winnerPhone = "";
-      if (choice === "1") winnerPhone = hPhone;
-      else if (choice === "2") winnerPhone = gPhone;
-      else {
-        alert("❌ Invalid selection! Please enter 1 or 2.");
-        return;
-      }
-
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = 'image/*';
-      fileInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async function(evt) {
-          const img = new Image();
-          img.onload = async function() {
-            const canvas = document.createElement('canvas');
-            let width = img.width, height = img.height, maxDim = 500;
-            if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
-            else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
-            canvas.width = width; canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-
-            const base64Img = canvas.toDataURL('image/jpeg', 0.5);
-
-            const { error } = await _supabase.from('matches').update({
-              result_img: base64Img,
-              claimed_winner: String(winnerPhone).trim(),
-              result_status: 'pending'
-            }).eq('id', matchId);
-
-            if(!error) {
-              alert("✅ Result Screenshot Submitted Successfully! Admin will verify and credit prize shortly.");
-              loadRequestsTab();
-            } else alert("Error Submitting Result: " + error.message);
-          };
-          img.src = evt.target.result;
-        };
-        reader.readAsDataURL(file);
-      };
-      fileInput.click();
-    }
-
     async function loadRequestsTab() {
       const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false }).limit(25);
       const container = document.getElementById('requestsList'); container.innerHTML = '';
@@ -723,7 +771,7 @@
                   const remainingMins = Math.ceil(remainingSecs / 60);
                   hostContent += `<p style="color:#38bdf8; font-size:12px; margin-top:10px; text-align:center; font-weight:bold;">🎮 Match in progress... Result upload unlocks in ~${remainingMins} min(s).</p>`;
                 } else {
-                  hostContent += `<button class="primary-btn" style="margin-top:10px; background:#f59e0b; color:#000;" onclick="submitMatchResult(${m.id}, '${m.host_phone}', '${m.guest_phone}')">📸 Submit Match Result Screenshot</button>`;
+                  hostContent += `<button class="primary-btn" style="margin-top:10px; background:#f59e0b; color:#000;" onclick="openResultModal(${m.id}, '${m.host_phone}', '${m.host_name}', '${m.guest_phone}', '${m.guest_name}')">📸 Submit Match Result Screenshot</button>`;
                 }
               } else {
                 hostContent = isHost 
@@ -893,7 +941,7 @@
             historyAction = `
               <div style="margin-top:6px; border-top:1px dashed #334155; padding-top:6px;">
                 <span style="color:#ef4444; font-size:10px; font-weight:bold;">⚠️ Auto-Expires in ~${remMin} min(s)</span>
-                <button class="primary-btn" style="padding:6px; font-size:11px; margin-top:4px; background:#f59e0b; color:#000;" onclick="submitMatchResult(${m.id}, '${m.host_phone}', '${m.guest_phone}')">📸 Upload Result Screenshot</button>
+                <button class="primary-btn" style="padding:6px; font-size:11px; margin-top:4px; background:#f59e0b; color:#000;" onclick="openResultModal(${m.id}, '${m.host_phone}', '${m.host_name}', '${m.guest_phone}', '${m.guest_name}')">📸 Upload Result Screenshot</button>
               </div>`;
           }
         }
@@ -936,22 +984,41 @@
       });
     }
 
-    // UPDATE: Robust Winner Approval by String conversion
+    // UPDATED SMART ADMIN WINNER APPROVAL LOGIC (FIXES DATA TYPE MISMATCH)
     async function approveMatchWinner(matchId, winnerPhone, prizeAmount) {
-      const targetPhone = String(winnerPhone).trim();
-      if(!confirm(`Approve Winner (${targetPhone}) and credit Rs. ${prizeAmount} Win Balance?`)) return;
+      const targetPhoneStr = String(winnerPhone).trim();
+      if(!confirm(`Approve Winner (${targetPhoneStr}) and credit Rs. ${prizeAmount} Win Balance?`)) return;
 
-      const { data: wUser, error: uErr } = await _supabase.from('users').select('balance, win_balance').eq('phone', targetPhone).single();
-      
-      if(uErr || !wUser) {
-        return alert(`❌ Winner user not found! (Searched for: ${targetPhone})`);
+      // 1. Try finding user by String Phone
+      let { data: wUser, error: uErr } = await _supabase.from('users').select('balance, win_balance, phone').eq('phone', targetPhoneStr).maybeSingle();
+
+      // 2. Fallback: Try Number format if string fails
+      if (!wUser && !isNaN(targetPhoneStr)) {
+        const numPhone = Number(targetPhoneStr);
+        const { data: wUserNum } = await _supabase.from('users').select('balance, win_balance, phone').eq('phone', numPhone).maybeSingle();
+        wUser = wUserNum;
       }
 
-      const newWinBal = (wUser.win_balance || 0) + parseFloat(prizeAmount);
-      const newMainBal = wUser.balance + parseFloat(prizeAmount);
+      if(!wUser) {
+        return alert(`❌ Winner user not found in database!\n(Searched for Phone: ${targetPhoneStr})\n\nPlease check if player registered with this exact phone number.`);
+      }
 
-      await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', targetPhone);
-      
+      const currentWinBal = parseFloat(wUser.win_balance || 0);
+      const currentMainBal = parseFloat(wUser.balance || 0);
+      const prize = parseFloat(prizeAmount);
+
+      const newWinBal = currentWinBal + prize;
+      const newMainBal = currentMainBal + prize;
+
+      const { error: updateBalErr } = await _supabase.from('users').update({ 
+        balance: newMainBal, 
+        win_balance: newWinBal 
+      }).eq('phone', wUser.phone);
+
+      if (updateBalErr) {
+        return alert("❌ Failed to credit winner balance: " + updateBalErr.message);
+      }
+
       const { error: mErr } = await _supabase.from('matches').update({
         status: 'completed',
         result_status: 'approved'
