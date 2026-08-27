@@ -308,7 +308,7 @@
       <ul class="rule-list">
         <li><b>🏆 Tournament Naming Rule:</b> Host ले Match बनाउँदा उपयुक्त र सभ्य Tournament Name राख्नुपर्छ। गालीगलौज वा आपत्तिजनक नाम राखिएमा Match Auto-Cancel हुनेछ।</li>
         <li><b>⚽ Room Timing:</b> Room ID/Pass Match Start Time भन्दा <b>६ मिनेट अघि</b> मात्र सेट/हेर्न पाइनेछ। Match सुरु भएको ५ मिनेट पछि Result Submit खुल्नेछ।</li>
-        <li><b>⏳ Auto Move & Expiry:</b> Match सुरु भएको ३0 मिनेटपछि Active Requests बाट हटेर History मा सर्नेछ। History मा सरेको ४ घण्टा (२४० मिनेट) भित्र Screenshot नहाले Match स्वतः <b>Expired</b> हुनेछ।</li>
+        <li><b>⏳ Auto Move & Expiry:</b> Match सुरु भएको ३० मिनेटपछि Active Requests बाट हटेर History मा सर्नेछ। History मा सरेको ४ घण्टा (२४० मिनेट) भित्र Screenshot नहाले Match स्वतः <b>Expired</b> हुनेछ।</li>
         <li><b>🚫 Fair Play Policy:</b> Match को बीचमा जानी-जानी Network Disconnect गर्ने, Hack/Cheat प्रयोग गर्ने वा अर्काको Owner ID प्रयोग गर्ने Player लाई सिधै Ban गरिनेछ।</li>
         <li><b>💳 Deposit Policy:</b> Deposit गर्दा सही Transaction Ref Code र Screenshot Upload गर्नु पर्नेछ। प्रति Deposit <b>Rs. 2 Fee</b> काटिनेछ।</li>
         <li><b>💸 Withdrawal Policy:</b> Minimum Withdrawal <b>Rs. 75</b> हो। <b>Rs. 5 Charge</b> लाग्छ र कुल रकमको कम्तीमा <b>35% Win Balance</b> हुनु अनिवार्य छ।</li>
@@ -316,7 +316,7 @@
     </div>
   </div>
 
-  <!-- RESULT UPLOAD MODAL (FIXED FOR ALL MOBIES) -->
+  <!-- RESULT UPLOAD MODAL -->
   <div id="resultModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
@@ -823,6 +823,7 @@
       btn.disabled = false;
     });
 
+    // --- WITHDRAWAL FEATURE WITH MAIN BAL 100% & WIN BAL 35% DEDUCTION ---
     document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnWithdrawSubmit');
@@ -833,19 +834,23 @@
       const name = document.getElementById('witName').value;
       const amount = parseFloat(document.getElementById('witAmount').value);
 
-      const minWinRequired = amount * 0.35;
+      const winBalDeduct = amount * 0.35; // 35% of withdrawal amount
       
       const { data: freshUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', String(currentUser.phone).trim()).single();
       const userWinBal = freshUser ? (freshUser.win_balance || 0) : (currentUser.win_balance || 0);
       const userMainBal = freshUser ? freshUser.balance : currentUser.balance;
 
-      if(userWinBal < minWinRequired) {
-        alert(`❌ 35% Win Balance Required!\nTo withdraw Rs. ${amount}, you need at least Rs. ${minWinRequired.toFixed(1)} Win Balance.\nYour Win Balance: Rs. ${userWinBal}`);
+      if(userMainBal < amount) { 
+        alert("❌ Insufficient Main Balance!"); 
+        btn.disabled = false; 
+        return; 
+      }
+
+      if(userWinBal < winBalDeduct) {
+        alert(`❌ Insufficient Win Balance!\nTo withdraw Rs. ${amount}, you need at least Rs. ${winBalDeduct.toFixed(1)} Win Balance.\nYour Current Win Balance: Rs. ${userWinBal}`);
         btn.disabled = false;
         return;
       }
-
-      if(userMainBal < amount) { alert("❌ Insufficient Main Balance!"); btn.disabled = false; return; }
 
       const netWithdraw = amount - 5;
 
@@ -854,11 +859,21 @@
       ]);
 
       if(!error) {
-        const newBal = userMainBal - amount;
-        await _supabase.from('users').update({ balance: newBal }).eq('phone', String(currentUser.phone).trim());
-        currentUser.balance = newBal;
-        document.getElementById('userBalance').innerText = newBal;
-        alert(`✅ Withdraw Requested! (Rs. 5 Fee Deducted. You will receive: Rs. ${netWithdraw})`); 
+        // DEDUCT 100% FROM MAIN BALANCE AND 35% FROM WIN BALANCE IMMEDIATELY
+        const newMainBal = userMainBal - amount;
+        const newWinBal = userWinBal - winBalDeduct;
+
+        await _supabase.from('users').update({ 
+          balance: newMainBal,
+          win_balance: newWinBal
+        }).eq('phone', String(currentUser.phone).trim());
+
+        currentUser.balance = newMainBal;
+        currentUser.win_balance = newWinBal;
+        document.getElementById('userBalance').innerText = newMainBal;
+        document.getElementById('userWinBalance').innerText = newWinBal;
+
+        alert(`✅ Withdraw Requested! (Rs. 5 Fee Deducted. You will receive: Rs. ${netWithdraw})\n- Main Balance Deducted: Rs. ${amount}\n- Win Balance Deducted: Rs. ${winBalDeduct.toFixed(1)}`); 
         this.reset(); switchTab('history');
       } else alert("Error: " + error.message);
       btn.disabled = false;
@@ -889,6 +904,7 @@
       });
     }
 
+    // --- 7-DAY FILTERED PLAYER HISTORY WITH 4-HOUR MATCH TIMER ---
     async function loadPlayerHistory() {
       if (!currentUser) return;
       const userPhoneClean = String(currentUser.phone).trim();
@@ -919,7 +935,7 @@
         
         const startTime = new Date(m.match_time).getTime();
         const autoMoveTime = startTime + (30 * 60 * 1000);
-        const expiryTime = autoMoveTime + (240 * 60 * 1000);
+        const expiryTime = autoMoveTime + (240 * 60 * 1000); // 4 Hours (240 mins) Limit
 
         let matchStatus = m.status;
         let isExpired = false;
@@ -984,24 +1000,20 @@
       });
     }
 
-    // UPDATED SMART ADMIN WINNER APPROVAL LOGIC (FIXES DATA TYPE & FORMAT MISMATCH DEFINITIVELY)
     async function approveMatchWinner(matchId, winnerPhone, prizeAmount) {
       const targetPhoneStr = String(winnerPhone).trim().replace(/[^0-9]/g, '');
       if(!confirm(`Approve Winner (${targetPhoneStr}) and credit Rs. ${prizeAmount} Win Balance?`)) return;
 
       let wUser = null;
 
-      // Method 1: Exact String Query
       let { data: u1 } = await _supabase.from('users').select('*').eq('phone', targetPhoneStr).maybeSingle();
       wUser = u1;
 
-      // Method 2: Numeric Integer Query (If DB phone column is int8/numeric)
       if (!wUser && !isNaN(targetPhoneStr)) {
         let { data: u2 } = await _supabase.from('users').select('*').eq('phone', Number(targetPhoneStr)).maybeSingle();
         wUser = u2;
       }
 
-      // Method 3: ILIKE Wildcard Query (Matches string with potential country code or spaces)
       if (!wUser && targetPhoneStr.length >= 10) {
         const last10Digits = targetPhoneStr.slice(-10);
         let { data: u3 } = await _supabase.from('users').select('*').ilike('phone', `%${last10Digits}%`).maybeSingle();
@@ -1209,6 +1221,7 @@
       alert("✅ Marked Paid!"); loadAdminData();
     }
 
+    // --- REJECT & REFUND WITHDRAWAL LOGIC (REFUNDS MAIN + 35% WIN BAL) ---
     async function rejectWithdraw(witId, userPhone, amount) {
       const cleanPhone = String(userPhone).trim();
       if(!confirm("Are you sure you want to REJECT & REFUND this Withdrawal?")) return;
@@ -1217,10 +1230,21 @@
         const selectedIndex = parseInt(choice.trim()) - 1;
         const selectedReason = WITHDRAW_REJECT_REASONS[selectedIndex] || "Rejected by Admin";
 
-        const { data: u } = await _supabase.from('users').select('balance').eq('phone', cleanPhone).single();
-        if(u) await _supabase.from('users').update({ balance: u.balance + amount }).eq('phone', cleanPhone);
+        const { data: u } = await _supabase.from('users').select('balance, win_balance').eq('phone', cleanPhone).single();
+        if(u) {
+          const refundWinBal = amount * 0.35; // Refund the 35% Win Balance back
+          const newMainBal = (u.balance || 0) + amount;
+          const newWinBal = (u.win_balance || 0) + refundWinBal;
+
+          await _supabase.from('users').update({ 
+            balance: newMainBal,
+            win_balance: newWinBal 
+          }).eq('phone', cleanPhone);
+        }
+
         await _supabase.from('withdrawals').update({ status: 'rejected', reason: selectedReason }).eq('id', witId);
-        alert("❌ Rejected & Refunded!"); loadAdminData();
+        alert(`❌ Withdrawal Rejected & Refunded!\n- Main Balance Refunded: Rs. ${amount}\n- Win Balance Refunded: Rs. ${(amount * 0.35).toFixed(1)}`); 
+        loadAdminData();
       }
     }
 
