@@ -984,19 +984,28 @@
       });
     }
 
-    // UPDATED SMART ADMIN WINNER APPROVAL LOGIC (FIXES DATA TYPE MISMATCH)
+    // UPDATED SMART ADMIN WINNER APPROVAL LOGIC (FIXES DATA TYPE & FORMAT MISMATCH DEFINITIVELY)
     async function approveMatchWinner(matchId, winnerPhone, prizeAmount) {
-      const targetPhoneStr = String(winnerPhone).trim();
+      const targetPhoneStr = String(winnerPhone).trim().replace(/[^0-9]/g, '');
       if(!confirm(`Approve Winner (${targetPhoneStr}) and credit Rs. ${prizeAmount} Win Balance?`)) return;
 
-      // 1. Try finding user by String Phone
-      let { data: wUser, error: uErr } = await _supabase.from('users').select('balance, win_balance, phone').eq('phone', targetPhoneStr).maybeSingle();
+      let wUser = null;
 
-      // 2. Fallback: Try Number format if string fails
+      // Method 1: Exact String Query
+      let { data: u1 } = await _supabase.from('users').select('*').eq('phone', targetPhoneStr).maybeSingle();
+      wUser = u1;
+
+      // Method 2: Numeric Integer Query (If DB phone column is int8/numeric)
       if (!wUser && !isNaN(targetPhoneStr)) {
-        const numPhone = Number(targetPhoneStr);
-        const { data: wUserNum } = await _supabase.from('users').select('balance, win_balance, phone').eq('phone', numPhone).maybeSingle();
-        wUser = wUserNum;
+        let { data: u2 } = await _supabase.from('users').select('*').eq('phone', Number(targetPhoneStr)).maybeSingle();
+        wUser = u2;
+      }
+
+      // Method 3: ILIKE Wildcard Query (Matches string with potential country code or spaces)
+      if (!wUser && targetPhoneStr.length >= 10) {
+        const last10Digits = targetPhoneStr.slice(-10);
+        let { data: u3 } = await _supabase.from('users').select('*').ilike('phone', `%${last10Digits}%`).maybeSingle();
+        wUser = u3;
       }
 
       if(!wUser) {
@@ -1013,7 +1022,7 @@
       const { error: updateBalErr } = await _supabase.from('users').update({ 
         balance: newMainBal, 
         win_balance: newWinBal 
-      }).eq('phone', wUser.phone);
+      }).eq('id', wUser.id);
 
       if (updateBalErr) {
         return alert("❌ Failed to credit winner balance: " + updateBalErr.message);
