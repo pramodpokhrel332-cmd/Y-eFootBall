@@ -504,7 +504,7 @@
       const phone = document.getElementById('loginPhone').value.trim();
       const pass = document.getElementById('loginPass').value.trim();
 
-      const { data } = await _supabase.from('users').select('*').eq('phone', phone).eq('pass', pass).single();
+      const { data } = await _supabase.from('users').select('*').eq('phone', phone).eq('pass', pass).maybeSingle();
       if (data) {
         currentUser = data;
         document.getElementById('authScreen').style.display = 'none';
@@ -823,7 +823,6 @@
       btn.disabled = false;
     });
 
-    // --- WITHDRAWAL FEATURE WITH MAIN BAL 100% & WIN BAL 35% DEDUCTION ---
     document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnWithdrawSubmit');
@@ -834,7 +833,7 @@
       const name = document.getElementById('witName').value;
       const amount = parseFloat(document.getElementById('witAmount').value);
 
-      const winBalDeduct = amount * 0.35; // 35% of withdrawal amount
+      const winBalDeduct = amount * 0.35;
       
       const { data: freshUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', String(currentUser.phone).trim()).single();
       const userWinBal = freshUser ? (freshUser.win_balance || 0) : (currentUser.win_balance || 0);
@@ -859,7 +858,6 @@
       ]);
 
       if(!error) {
-        // DEDUCT 100% FROM MAIN BALANCE AND 35% FROM WIN BALANCE IMMEDIATELY
         const newMainBal = userMainBal - amount;
         const newWinBal = userWinBal - winBalDeduct;
 
@@ -904,7 +902,6 @@
       });
     }
 
-    // --- 7-DAY FILTERED PLAYER HISTORY WITH 4-HOUR MATCH TIMER ---
     async function loadPlayerHistory() {
       if (!currentUser) return;
       const userPhoneClean = String(currentUser.phone).trim();
@@ -935,7 +932,7 @@
         
         const startTime = new Date(m.match_time).getTime();
         const autoMoveTime = startTime + (30 * 60 * 1000);
-        const expiryTime = autoMoveTime + (240 * 60 * 1000); // 4 Hours (240 mins) Limit
+        const expiryTime = autoMoveTime + (240 * 60 * 1000); 
 
         let matchStatus = m.status;
         let isExpired = false;
@@ -1221,7 +1218,6 @@
       alert("✅ Marked Paid!"); loadAdminData();
     }
 
-    // --- REJECT & REFUND WITHDRAWAL LOGIC (REFUNDS MAIN + 35% WIN BAL) ---
     async function rejectWithdraw(witId, userPhone, amount) {
       const cleanPhone = String(userPhone).trim();
       if(!confirm("Are you sure you want to REJECT & REFUND this Withdrawal?")) return;
@@ -1232,7 +1228,7 @@
 
         const { data: u } = await _supabase.from('users').select('balance, win_balance').eq('phone', cleanPhone).single();
         if(u) {
-          const refundWinBal = amount * 0.35; // Refund the 35% Win Balance back
+          const refundWinBal = amount * 0.35;
           const newMainBal = (u.balance || 0) + amount;
           const newWinBal = (u.win_balance || 0) + refundWinBal;
 
@@ -1249,11 +1245,13 @@
     }
 
     function subscribeRealtime() {
-      _supabase.channel('schema-db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+      _supabase.channel('public-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => {
           if(activeTab === 'arena') loadMatches();
           if(activeTab === 'requests') loadRequestsTab();
           if(activeTab === 'history') loadPlayerHistory();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
           if(currentUser) {
             _supabase.from('users').select('balance, win_balance').eq('phone', String(currentUser.phone).trim()).single().then(({data}) => {
               if(data) { 
