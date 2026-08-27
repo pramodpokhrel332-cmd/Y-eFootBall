@@ -610,7 +610,6 @@
       if(!error) { alert("✅ Room details updated and shared!"); loadRequestsTab(); }
     }
 
-    // FIXED SUBMIT MATCH RESULT FUNCTION (MOBILE COMPATIBLE)
     async function submitMatchResult(matchId, hostPhone, guestPhone) {
       const winnerPhone = prompt(`Who won this match?\nEnter Phone Number of Winner:\nHost: ${hostPhone}\nGuest: ${guestPhone}`);
       if(!winnerPhone) return;
