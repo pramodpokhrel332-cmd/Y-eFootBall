@@ -139,7 +139,8 @@
       <button class="tab-btn active" onclick="switchTab('arena')">Arena</button>
       <button class="tab-btn" onclick="switchTab('news')" style="border-color:#eab308; color:#fde047;">📢 News</button>
       <button class="tab-btn" onclick="switchTab('requests')" style="border-color:#38bdf8;">🔔 Requests</button>
-      <button class="tab-btn" onclick="switchTab('history')">📊 History</button>
+      <button class="tab-btn" onclick="switchTab('matchHistory')" style="border-color:#22c55e;">⚽ Match History</button>
+      <button class="tab-btn" onclick="switchTab('walletHistory')">💳 Wallet History</button>
       <button class="tab-btn" onclick="switchTab('deposit')">Deposit</button>
       <button class="tab-btn" onclick="switchTab('withdraw')">Withdraw</button>
       <button class="tab-btn" style="border-color:#ef4444;" onclick="openAdminPanel()">Admin Panel</button>
@@ -212,13 +213,21 @@
       </div>
     </div>
 
-    <!-- MATCH HISTORY TAB INTEGRATED WITH SEARCH -->
-    <div id="history" class="page">
+    <!-- DEDICATED MATCH HISTORY TAB -->
+    <div id="matchHistory" class="page">
+      <div class="card" style="border-color: #22c55e;">
+        <h2 style="color: #22c55e;">⚽ Last 7 Days Match History</h2>
+        <label>🔍 Search Match ID (Last 4 Digits):</label>
+        <input type="text" id="matchHashFilter" placeholder="e.g. 1042" maxlength="4" oninput="loadMatchHistoryOnly()" style="margin-bottom: 12px;">
+        <div id="matchHistoryContainer">Loading match history...</div>
+      </div>
+    </div>
+
+    <!-- DEDICATED WALLET HISTORY TAB -->
+    <div id="walletHistory" class="page">
       <div class="card" style="border-color: #38bdf8;">
-        <h2>📊 Match & Transaction History (Last 7 Days)</h2>
-        <label>🔍 Filter Match by Last 4-Digits (Match ID/Phone):</label>
-        <input type="text" id="historyHashFilter" placeholder="e.g. 1042" maxlength="4" oninput="loadPlayerHistory()" style="margin-bottom: 12px;">
-        <div id="playerHistoryList">Loading last week's history...</div>
+        <h2>💳 Last 7 Days Wallet History (Deposits & Withdrawals)</h2>
+        <div id="walletHistoryContainer">Loading wallet history...</div>
       </div>
     </div>
 
@@ -309,12 +318,11 @@
         <button class="close-modal-btn" onclick="closeRulesModal()">X</button>
       </div>
       <ul class="rule-list">
-        <li><b>🏆 Tournament Naming Rule:</b> Host ले Match बनाउँदा उपयुक्त र सभ्य Tournament Name राख्नुपर्छ। गालीगलौज वा आपत्तिजनक नाम राखिएमा Match Auto-Cancel हुनेछ।</li>
-        <li><b>⚽ Room Timing:</b> Room ID/Pass Match Start Time भन्दा <b>६ मिनेट अघि</b> मात्र सेट/हेर्न पाइनेछ। Match सुरु भएको ५ मिनेट पछि Result Submit खुल्नेछ।</li>
-        <li><b>⏳ Auto Move & Expiry:</b> Match सुरु भएको ३० मिनेटपछि Active Requests बाट हटेर History मा सर्नेछ। History मा सरेको ४ घण्टा (२४० मिनेट) भित्र Screenshot नहाले Match स्वतः <b>Expired</b> हुनेछ।</li>
-        <li><b>🚫 Fair Play Policy:</b> Match को बीचमा जानी-जानी Network Disconnect गर्ने, Hack/Cheat प्रयोग गर्ने वा अर्काको Owner ID प्रयोग गर्ने Player लाई सिधै Ban गरिनेछ।</li>
-        <li><b>💳 Deposit Policy:</b> Deposit गर्दा सही Transaction Ref Code र Screenshot Upload गर्नु पर्नेछ। प्रति Deposit <b>Rs. 2 Fee</b> काटिनेछ।</li>
-        <li><b>💸 Withdrawal Policy:</b> Minimum Withdrawal <b>Rs. 75</b> हो। <b>Rs. 5 Charge</b> लाग्छ र कुल रकमको कम्तीमा <b>35% Win Balance</b> हुनु अनिवार्य छ।</li>
+        <li><b>🏆 Tournament Naming Rule:</b> Host ले Match बनाउँदा उपयुक्त नाम राख्नुपर्छ।</li>
+        <li><b>⚽ Room Timing:</b> Room ID/Pass Start Time भन्दा ६ मिनेट अघि देखिनेछ।</li>
+        <li><b>⏳ Auto Move & Expiry:</b> Match सुरु भएको ३० मिनेटपछि Requests बाट हटेर Match History मा सर्नेछ। History बाट ४ घण्टा भित्र Screenshot बुझाउनु पर्नेछ।</li>
+        <li><b>💳 Deposit Policy:</b> प्रति Deposit <b>Rs. 2 Fee</b> काटिनेछ।</li>
+        <li><b>💸 Withdrawal Policy:</b> Min Withdraw <b>Rs. 75</b> (Fee: Rs. 5)। ३५% Win Balance अनिवार्य छ।</li>
       </ul>
     </div>
   </div>
@@ -441,10 +449,10 @@
       }).eq('id', matchId);
 
       if(!error) {
-        alert("✅ Result Screenshot Submitted Successfully! Admin will verify and credit prize shortly.");
+        alert("✅ Result Screenshot Submitted Successfully!");
         closeResultModal();
         if(activeTab === 'requests') loadRequestsTab();
-        if(activeTab === 'history') loadPlayerHistory();
+        if(activeTab === 'matchHistory') loadMatchHistoryOnly();
       } else alert("Error Submitting Result: " + error.message);
 
       btn.disabled = false; btn.innerText = "Upload & Send to Admin";
@@ -531,7 +539,8 @@
       if (tabId === 'arena') loadMatches();
       if (tabId === 'news') loadNews();
       if (tabId === 'requests') loadRequestsTab();
-      if (tabId === 'history') loadPlayerHistory();
+      if (tabId === 'matchHistory') loadMatchHistoryOnly();
+      if (tabId === 'walletHistory') loadWalletHistoryOnly();
     }
 
     function openAdminPanel() {
@@ -612,9 +621,7 @@
       let currentReqs = m.requests || [];
       const alreadyRequested = currentReqs.some(r => String(r.phone).trim() === String(currentUser.phone).trim());
 
-      if (alreadyRequested) {
-        return alert("⚠️ You have already sent a join request for this match!");
-      }
+      if (alreadyRequested) return alert("⚠️ Request already sent!");
 
       currentReqs.push({
         phone: String(currentUser.phone).trim(),
@@ -624,12 +631,10 @@
 
       const { error } = await _supabase.from('matches').update({ requests: currentReqs }).eq('id', matchId);
       if(!error) {
-        alert("🎉 Join Request Sent! Money will only be deducted if Host ACCEPTS your request.");
+        alert("🎉 Join Request Sent!");
         loadMatches();
         switchTab('requests');
-      } else {
-        alert("Error sending request: " + error.message);
-      }
+      } else alert("Error: " + error.message);
     }
 
     async function loadMatches() {
@@ -650,7 +655,7 @@
         if(m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') return;
         
         const startTime = new Date(m.match_time).getTime();
-        // AUTO-CLEAR FEATURE: Remove matches older than 30 mins after start time from Arena Tab
+        // Match starts + 30 Mins -> Disappears from Arena Tab
         if (now >= startTime + (30 * 60 * 1000)) return;
 
         const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
@@ -668,7 +673,7 @@
             </div>`;
         } else {
           let actionArea = isHost 
-            ? `<p style="color:#f59e0b; font-size:12px; margin-top:8px; font-weight:bold;">⏳ Waiting for requests (Check Requests Tab)...</p>` 
+            ? `<p style="color:#f59e0b; font-size:12px; margin-top:8px; font-weight:bold;">⏳ Waiting for requests...</p>` 
             : `<button class="join-btn" onclick="sendJoinRequest(${m.id})">Send Join Request (Fee: Rs. ${m.entry_fee})</button>`;
 
           openContainer.innerHTML += `
@@ -683,12 +688,10 @@
 
     async function acceptGuestRequest(matchId, guestPhone, guestName, guestOwnerId, entryFee) {
       const cleanPhone = String(guestPhone).trim();
-      if(!confirm(`Accept ${guestName}'s request? Rs. ${entryFee} will be deducted from their balance.`)) return;
+      if(!confirm(`Accept ${guestName}'s request?`)) return;
 
       const { data: guestUser } = await _supabase.from('users').select('balance').eq('phone', cleanPhone).single();
-      if(!guestUser || guestUser.balance < entryFee) {
-        return alert("❌ Opponent does not have enough balance anymore!");
-      }
+      if(!guestUser || guestUser.balance < entryFee) return alert("❌ Opponent insufficient balance!");
 
       await _supabase.from('users').update({ balance: guestUser.balance - entryFee }).eq('phone', cleanPhone);
 
@@ -701,23 +704,21 @@
       }).eq('id', matchId);
 
       if(!updateErr) {
-        alert("✅ Request Accepted & Match Locked!");
+        alert("✅ Match Locked!");
         loadRequestsTab();
-      } else {
-        alert("❌ Error: " + updateErr.message);
-      }
+      } else alert("❌ Error: " + updateErr.message);
     }
 
     async function updateRoomCredentials(matchId) {
       const rId = prompt("Enter Match Room ID / Code:");
       const rPass = prompt("Enter Room Password:");
-      if(!rId || !rPass) return alert("Room details are required!");
+      if(!rId || !rPass) return alert("Details required!");
 
       const { error } = await _supabase.from('matches').update({ room_id: rId, room_pass: rPass }).eq('id', matchId);
-      if(!error) { alert("✅ Room details updated and shared!"); loadRequestsTab(); }
+      if(!error) { alert("✅ Room details updated!"); loadRequestsTab(); }
     }
 
-    // AUTO-CLEAR REQUESTS TAB (Disappears after 30 mins)
+    // LOAD REQUESTS TAB (STRICT 30 MIN CLEAR)
     async function loadRequestsTab() {
       const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false }).limit(25);
       const container = document.getElementById('requestsList'); container.innerHTML = '';
@@ -731,7 +732,7 @@
         const startTime = new Date(m.match_time).getTime();
         const autoMoveTime = startTime + (30 * 60 * 1000); 
 
-        // REQUEST TAB CLEAR RULE: Requests tab clears after 30 minutes from start time!
+        // REQUEST CLEAR LOGIC: Match time + 30 mins pachhi Requests Tab bata auto-remove hunxa!
         if (now >= autoMoveTime) return;
 
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
@@ -768,15 +769,8 @@
               if (m.room_id && m.room_pass) {
                 hostContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
                 
-                const resultSubmitTime = startTime + (5 * 60 * 1000); 
-
-                // RESULT SUBMIT OPTION DYNAMIC DISPLAY
                 if (m.result_status === 'pending') {
                   hostContent += `<p style="color:#22c55e; font-size:12px; margin-top:8px; text-align:center; font-weight:bold;">✅ Result submitted! Sent for Admin verification.</p>`;
-                } else if (now < resultSubmitTime) {
-                  const remainingSecs = Math.ceil((resultSubmitTime - now) / 1000);
-                  const remainingMins = Math.ceil(remainingSecs / 60);
-                  hostContent += `<p style="color:#38bdf8; font-size:12px; margin-top:10px; text-align:center; font-weight:bold;">🎮 Match in progress... Result upload unlocks in ~${remainingMins} min(s).</p>`;
                 } else {
                   hostContent += `<button class="primary-btn" style="margin-top:10px; background:#f59e0b; color:#000;" onclick="openResultModal(${m.id}, '${m.host_phone}', '${m.host_name}', '${m.guest_phone}', '${m.guest_name}')">📸 Submit Match Result Screenshot</button>`;
                 }
@@ -804,16 +798,129 @@
       }
     }
 
+    // EXCLUSIVE MATCH HISTORY TAB (LAST 7 DAYS)
+    async function loadMatchHistoryOnly() {
+      if (!currentUser) return;
+      const userPhoneClean = String(currentUser.phone).trim();
+      const searchHash = document.getElementById('matchHashFilter') ? document.getElementById('matchHashFilter').value.trim() : '';
+      const container = document.getElementById('matchHistoryContainer');
+      container.innerHTML = 'Loading match history...';
+
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const now = new Date().getTime();
+
+      const { data: hostMatches } = await _supabase.from('matches').select('*').eq('host_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
+      const { data: guestMatches } = await _supabase.from('matches').select('*').eq('guest_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
+
+      const allMatches = [...(hostMatches || []), ...(guestMatches || [])];
+      let uniqueMatches = Array.from(new Set(allMatches.map(m => m.id))).map(id => allMatches.find(m => m.id === id));
+
+      if (searchHash !== '') {
+        uniqueMatches = uniqueMatches.filter(m => String(m.id).includes(searchHash));
+      }
+
+      if (uniqueMatches.length === 0) {
+        container.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No match history found for the last 7 days.</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      uniqueMatches.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).forEach(async m => {
+        const isHost = String(m.host_phone).trim() === userPhoneClean;
+        const opponent = isHost ? (m.guest_name || 'Waiting...') : m.host_name;
+        const title = m.match_name ? m.match_name : `Match #${m.id}`;
+        
+        const startTime = new Date(m.match_time).getTime();
+        const autoMoveTime = startTime + (30 * 60 * 1000); 
+        const expiryTime = startTime + (240 * 60 * 1000);  
+
+        let matchStatus = m.status;
+        let isExpired = false;
+
+        if (now >= expiryTime && m.status !== 'completed' && m.status !== 'rejected') {
+          isExpired = true;
+          matchStatus = 'expired';
+          await _supabase.from('matches').update({ status: 'expired' }).eq('id', m.id);
+        }
+
+        let historyAction = '';
+        if (!isExpired && m.status !== 'completed' && m.status !== 'rejected') {
+          if (m.result_status === 'pending') {
+            historyAction = `<p style="color:#22c55e; font-size:11px; margin-top:4px; font-weight:bold;">✅ Result Submitted! Admin Verification Pending...</p>`;
+          } else if (now >= autoMoveTime && now < expiryTime) {
+            const remMin = Math.ceil((expiryTime - now) / 60000);
+            historyAction = `
+              <div style="margin-top:6px; border-top:1px dashed #334155; padding-top:6px;">
+                <span style="color:#ef4444; font-size:10px; font-weight:bold;">⚠️ Expiration Window: ~${remMin} min(s) left</span>
+                <button class="primary-btn" style="padding:6px; font-size:11px; margin-top:4px; background:#f59e0b; color:#000;" onclick="openResultModal(${m.id}, '${m.host_phone}', '${m.host_name}', '${m.guest_phone}', '${m.guest_name}')">📸 Upload Result Screenshot</button>
+              </div>`;
+          }
+        }
+
+        let badgeClass = matchStatus === 'completed' || matchStatus === 'full' ? 'badge-approved' : (matchStatus === 'rejected' || matchStatus === 'expired' ? 'badge-rejected' : 'badge-pending');
+
+        container.innerHTML += `
+          <div class="history-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <b>⚽ ${title} vs ${opponent} <span style="font-size:10px; color:#38bdf8;">(#${String(m.id).slice(-4)})</span></b>
+              <span class="status-badge ${badgeClass}">${matchStatus}</span>
+            </div>
+            <div style="font-size:11px; color:#38bdf8; margin-top:3px;">
+              Entry Fee: Rs. ${m.entry_fee} | Winner Prize: Rs. ${(m.entry_fee * 2 * 0.9).toFixed(1)}
+            </div>
+            <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
+              Match Time: ${new Date(m.match_time).toLocaleString()}
+            </div>
+            ${historyAction}
+          </div>`;
+      });
+    }
+
+    // EXCLUSIVE WALLET HISTORY TAB (LAST 7 DAYS)
+    async function loadWalletHistoryOnly() {
+      if (!currentUser) return;
+      const userPhoneClean = String(currentUser.phone).trim();
+      const container = document.getElementById('walletHistoryContainer');
+      container.innerHTML = 'Loading wallet history...';
+
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason, created_at').eq('user_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
+      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason, created_at').eq('user_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
+
+      let walletList = [];
+      if (deps) deps.forEach(d => walletList.push({ type: '💳 Deposit', amount: d.amount, status: d.status, reason: d.reason, date: new Date(d.created_at) }));
+      if (wits) wits.forEach(w => walletList.push({ type: '💸 Withdrawal', amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at) }));
+
+      if (walletList.length === 0) {
+        container.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No deposits or withdrawals in the last 7 days.</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      walletList.sort((a, b) => b.date - a.date).forEach(item => {
+        let badgeClass = item.status === 'approved' ? 'badge-approved' : (item.status === 'rejected' ? 'badge-rejected' : 'badge-pending');
+        container.innerHTML += `
+          <div class="history-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <b>${item.type}</b>
+              <span class="status-badge ${badgeClass}">${item.status}</span>
+            </div>
+            <div style="font-size:11px; color:#38bdf8; margin-top:3px;">Amount: Rs. ${item.amount}</div>
+            <div style="font-size:10px; color:#94a3b8; margin-top:2px;">Date: ${item.date.toLocaleString()}</div>
+            ${item.reason ? `<div style="color:#ef4444; font-size:10px; margin-top:3px;">Reason: ${item.reason}</div>` : ''}
+          </div>`;
+      });
+    }
+
     document.getElementById('depositForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnDepositSubmit');
-      btn.innerText = "Submitting...";
-      btn.disabled = true;
+      btn.innerText = "Submitting..."; btn.disabled = true;
 
       const amount = parseFloat(document.getElementById('depAmount').value);
       const ref = document.getElementById('depRef').value;
       const screenshot = compressedImageData || document.getElementById('depImgPreview').src;
-
       const netAmount = amount - 2;
 
       const { error } = await _supabase.from('deposits').insert([
@@ -823,11 +930,10 @@
       if(!error) {
         alert(`✅ Deposit Request Submitted! Net Balance Addition: Rs. ${netAmount}`);
         this.reset(); compressedImageData = null; document.getElementById('depImgPreview').style.display = 'none';
-        switchTab('history');
+        switchTab('walletHistory');
       } else alert("Error: " + error.message);
       
-      btn.innerText = "Submit Deposit Proof";
-      btn.disabled = false;
+      btn.innerText = "Submit Deposit Proof"; btn.disabled = false;
     });
 
     document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
@@ -839,24 +945,14 @@
       const number = document.getElementById('witNumber').value;
       const name = document.getElementById('witName').value;
       const amount = parseFloat(document.getElementById('witAmount').value);
-
       const winBalDeduct = amount * 0.35;
       
       const { data: freshUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', String(currentUser.phone).trim()).single();
       const userWinBal = freshUser ? (freshUser.win_balance || 0) : (currentUser.win_balance || 0);
       const userMainBal = freshUser ? freshUser.balance : currentUser.balance;
 
-      if(userMainBal < amount) { 
-        alert("❌ Insufficient Main Balance!"); 
-        btn.disabled = false; 
-        return; 
-      }
-
-      if(userWinBal < winBalDeduct) {
-        alert(`❌ Insufficient Win Balance!\nTo withdraw Rs. ${amount}, you need at least Rs. ${winBalDeduct.toFixed(1)} Win Balance.\nYour Current Win Balance: Rs. ${userWinBal}`);
-        btn.disabled = false;
-        return;
-      }
+      if(userMainBal < amount) { alert("❌ Insufficient Main Balance!"); btn.disabled = false; return; }
+      if(userWinBal < winBalDeduct) { alert(`❌ Insufficient Win Balance! Min required: Rs. ${winBalDeduct.toFixed(1)}`); btn.disabled = false; return; }
 
       const netWithdraw = amount - 5;
 
@@ -868,18 +964,13 @@
         const newMainBal = userMainBal - amount;
         const newWinBal = userWinBal - winBalDeduct;
 
-        await _supabase.from('users').update({ 
-          balance: newMainBal,
-          win_balance: newWinBal
-        }).eq('phone', String(currentUser.phone).trim());
-
-        currentUser.balance = newMainBal;
-        currentUser.win_balance = newWinBal;
+        await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', String(currentUser.phone).trim());
+        currentUser.balance = newMainBal; currentUser.win_balance = newWinBal;
         document.getElementById('userBalance').innerText = newMainBal;
         document.getElementById('userWinBalance').innerText = newWinBal;
 
-        alert(`✅ Withdraw Requested! (Rs. 5 Fee Deducted. You will receive: Rs. ${netWithdraw})\n- Main Balance Deducted: Rs. ${amount}\n- Win Balance Deducted: Rs. ${winBalDeduct.toFixed(1)}`); 
-        this.reset(); switchTab('history');
+        alert(`✅ Withdraw Requested! Net Receive: Rs. ${netWithdraw}`); 
+        this.reset(); switchTab('walletHistory');
       } else alert("Error: " + error.message);
       btn.disabled = false;
     });
@@ -909,182 +1000,26 @@
       });
     }
 
-    // MATCH HISTORY TAB - LAST 7 DAYS & LAST 4 DIGITS HASH SEARCH SYSTEM
-    async function loadPlayerHistory() {
-      if (!currentUser) return;
-      const userPhoneClean = String(currentUser.phone).trim();
-      const searchHash = document.getElementById('historyHashFilter') ? document.getElementById('historyHashFilter').value.trim() : '';
-      
-      // Strict Last 7 days timestamp query
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const txContainer = document.getElementById('playerHistoryList');
-      txContainer.innerHTML = 'Loading history...';
-
-      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason, created_at').eq('user_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
-      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason, created_at').eq('user_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
-      
-      const { data: hostMatches } = await _supabase.from('matches').select('*').eq('host_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
-      const { data: guestMatches } = await _supabase.from('matches').select('*').eq('guest_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
-
-      let historyList = [];
-
-      if (deps) deps.forEach(d => historyList.push({ category: 'financial', type: '💳 Deposit', amount: d.amount, status: d.status, reason: d.reason, date: new Date(d.created_at), hash: String(d.created_at).slice(-4) }));
-      if (wits) wits.forEach(w => historyList.push({ category: 'financial', type: '💸 Withdrawal', amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at), hash: String(w.created_at).slice(-4) }));
-
-      const allMatches = [...(hostMatches || []), ...(guestMatches || [])];
-      const uniqueMatches = Array.from(new Set(allMatches.map(m => m.id))).map(id => allMatches.find(m => m.id === id));
-      const now = new Date().getTime();
-
-      for (let m of uniqueMatches) {
-        const isHost = String(m.host_phone).trim() === userPhoneClean;
-        const isGuest = String(m.guest_phone).trim() === userPhoneClean;
-        const opponent = isHost ? (m.guest_name || 'Waiting...') : m.host_name;
-        const title = m.match_name ? m.match_name : `Match #${m.id}`;
-        
-        const startTime = new Date(m.match_time).getTime();
-        const autoMoveTime = startTime + (30 * 60 * 1000);
-        const expiryTime = autoMoveTime + (240 * 60 * 1000); 
-
-        let matchStatus = m.status;
-        let isExpired = false;
-
-        if (now >= autoMoveTime && m.status !== 'completed' && m.status !== 'expired' && m.status !== 'rejected') {
-          if (now >= expiryTime) {
-            isExpired = true;
-            matchStatus = 'expired';
-            await _supabase.from('matches').update({ status: 'expired' }).eq('id', m.id);
-          }
-        }
-
-        let historyAction = '';
-        if (now >= autoMoveTime && !isExpired && m.status !== 'completed' && m.status !== 'rejected' && (isHost || isGuest)) {
-          // Dynamic Result Submission Button in History Tab
-          if (m.result_status === 'pending') {
-            historyAction = `<p style="color:#22c55e; font-size:11px; margin-top:4px; font-weight:bold;">✅ Screenshot Submitted! Admin verification pending...</p>`;
-          } else {
-            const remMin = Math.ceil((expiryTime - now) / 60000);
-            historyAction = `
-              <div style="margin-top:6px; border-top:1px dashed #334155; padding-top:6px;">
-                <span style="color:#ef4444; font-size:10px; font-weight:bold;">⚠️ Auto-Expires in ~${remMin} min(s)</span>
-                <button class="primary-btn" style="padding:6px; font-size:11px; margin-top:4px; background:#f59e0b; color:#000;" onclick="openResultModal(${m.id}, '${m.host_phone}', '${m.host_name}', '${m.guest_phone}', '${m.guest_name}')">📸 Upload Result Screenshot</button>
-              </div>`;
-          }
-        }
-
-        historyList.push({
-          id: m.id,
-          category: 'match',
-          type: `⚽ ${title} vs ${opponent}`,
-          amount: m.entry_fee,
-          status: matchStatus,
-          date: new Date(m.created_at),
-          actionHtml: historyAction,
-          hash: String(m.id).slice(-4)
-        });
-      }
-
-      txContainer.innerHTML = '';
-
-      // Last 4 Digits Hash Search Filter
-      if (searchHash !== '') {
-        historyList = historyList.filter(item => String(item.hash).includes(searchHash) || String(item.id || '').includes(searchHash));
-      }
-
-      if (historyList.length === 0) {
-        txContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No history found for last 7 days.</p>';
-        return;
-      }
-
-      historyList.sort((a, b) => b.date - a.date).forEach(item => {
-        let badgeClass = item.status === 'approved' || item.status === 'completed' || item.status === 'full' ? 'badge-approved' : (item.status === 'rejected' || item.status === 'expired' ? 'badge-rejected' : 'badge-pending');
-        
-        txContainer.innerHTML += `
-          <div class="history-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <b>${item.type} <span style="font-size:10px; color:#38bdf8;">(#${item.hash})</span></b>
-              <span class="status-badge ${badgeClass}">${item.status}</span>
-            </div>
-            <div style="font-size:11px; color:#38bdf8; margin-top:3px;">
-              ${item.category === 'match' ? 'Entry Fee' : 'Amount'}: Rs. ${item.amount}
-            </div>
-            <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
-              Date: ${item.date.toLocaleString()}
-            </div>
-            ${item.actionHtml ? item.actionHtml : ''}
-            ${item.reason ? `<div style="color:#ef4444; font-size:11px; margin-top:4px;">Reason: ${item.reason}</div>` : ''}
-          </div>`;
-      });
-    }
-
     async function approveMatchWinner(matchId, winnerPhone, prizeAmount) {
       const targetPhoneStr = String(winnerPhone).trim().replace(/[^0-9]/g, '');
-      if(!confirm(`Approve Winner (${targetPhoneStr}) and credit Rs. ${prizeAmount} Win Balance?`)) return;
+      if(!confirm(`Approve Winner (${targetPhoneStr}) & Pay Rs. ${prizeAmount}?`)) return;
 
-      let wUser = null;
+      let { data: wUser } = await _supabase.from('users').select('*').eq('phone', targetPhoneStr).maybeSingle();
+      if(!wUser) return alert("❌ Winner User Not Found!");
 
-      let { data: u1 } = await _supabase.from('users').select('*').eq('phone', targetPhoneStr).maybeSingle();
-      wUser = u1;
+      const newWinBal = parseFloat(wUser.win_balance || 0) + parseFloat(prizeAmount);
+      const newMainBal = parseFloat(wUser.balance || 0) + parseFloat(prizeAmount);
 
-      if (!wUser && !isNaN(targetPhoneStr)) {
-        let { data: u2 } = await _supabase.from('users').select('*').eq('phone', Number(targetPhoneStr)).maybeSingle();
-        wUser = u2;
-      }
+      await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('id', wUser.id);
+      await _supabase.from('matches').update({ status: 'completed', result_status: 'approved' }).eq('id', matchId);
 
-      if (!wUser && targetPhoneStr.length >= 10) {
-        const last10Digits = targetPhoneStr.slice(-10);
-        let { data: u3 } = await _supabase.from('users').select('*').ilike('phone', `%${last10Digits}%`).maybeSingle();
-        wUser = u3;
-      }
-
-      if(!wUser) {
-        return alert(`❌ Winner user not found in database!\n(Searched for Phone: ${targetPhoneStr})\n\nPlease check if player registered with this exact phone number.`);
-      }
-
-      const currentWinBal = parseFloat(wUser.win_balance || 0);
-      const currentMainBal = parseFloat(wUser.balance || 0);
-      const prize = parseFloat(prizeAmount);
-
-      const newWinBal = currentWinBal + prize;
-      const newMainBal = currentMainBal + prize;
-
-      const { error: updateBalErr } = await _supabase.from('users').update({ 
-        balance: newMainBal, 
-        win_balance: newWinBal 
-      }).eq('id', wUser.id);
-
-      if (updateBalErr) {
-        return alert("❌ Failed to credit winner balance: " + updateBalErr.message);
-      }
-
-      const { error: mErr } = await _supabase.from('matches').update({
-        status: 'completed',
-        result_status: 'approved'
-      }).eq('id', matchId);
-
-      if(!mErr) {
-        alert("🎉 Match Settled & Winner Credited Successfully!");
-        loadAdminData();
-      } else {
-        alert("Error updating match status: " + mErr.message);
-      }
+      alert("🎉 Match Settled!"); loadAdminData();
     }
 
     async function rejectMatchResult(matchId) {
-      if(!confirm("Are you sure you want to REJECT this Match Result?")) return;
-      const reason = prompt("Enter Rejection Reason:", "Invalid Screenshot / Evidence Mismatch");
-      if(!reason) return;
-
-      const { error } = await _supabase.from('matches').update({
-        result_status: 'rejected',
-        status: 'rejected'
-      }).eq('id', matchId);
-
-      if(!error) {
-        alert("❌ Match Result Rejected Successfully!");
-        loadAdminData();
-      } else {
-        alert("Error: " + error.message);
-      }
+      if(!confirm("Are you sure you want to REJECT this Result?")) return;
+      await _supabase.from('matches').update({ result_status: 'rejected', status: 'rejected' }).eq('id', matchId);
+      alert("❌ Result Rejected!"); loadAdminData();
     }
 
     async function loadAdminData() {
@@ -1123,10 +1058,10 @@
       } else {
         deposits.forEach(d => {
           depContainer.innerHTML += `
-            <div class="req-item" id="dep-item-${d.id}">
+            <div class="req-item">
               <div><b>${d.user_name}</b> (${d.user_phone}) - <b style="color:#22c55e;">Rs. ${d.amount}</b></div>
               <div style="font-size:12px; color:#94a3b8; margin-top:2px;">Ref Code: <b>${d.ref}</b></div>
-              <button style="background:#334155; color:#38bdf8; border:1px solid #38bdf8; padding:5px 8px; font-size:11px; border-radius:4px; margin-top:6px; cursor:pointer;" onclick="viewDepositProof(${d.id})">📷 View Screenshot</button>
+              <button style="background:#334155; color:#38bdf8; border:1px solid #38bdf8; padding:5px 8px; font-size:11px; border-radius:4px; margin-top:6px; cursor:pointer;" onclick="viewDepositProof(${d.id})">📷 View Proof</button>
               <div id="proof-container-${d.id}" style="margin-top:5px;"></div>
               <div class="action-row">
                 <button class="accept-btn" onclick="approveDeposit(${d.id}, '${d.user_phone}', ${d.amount})">Approve</button>
@@ -1145,7 +1080,7 @@
       } else {
         withdrawals.forEach(w => {
           witContainer.innerHTML += `
-            <div class="req-item" id="wit-item-${w.id}">
+            <div class="req-item">
               <div><b>${w.user_name}</b> - Rs. ${w.amount} via <b>${w.method}</b> (${w.number})</div>
               <div style="font-size:11px; color:#94a3b8;">Name: ${w.acc_name}</div>
               <div class="action-row">
@@ -1192,14 +1127,12 @@
       const { data } = await _supabase.from('deposits').select('proof_img').eq('id', depId).single();
       if(data && data.proof_img) {
         container.innerHTML = `<img src="${data.proof_img}" style="width:100%; max-height:250px; object-fit:contain; border-radius:6px; border:1px solid #38bdf8; margin-top:5px;">`;
-      } else {
-        container.innerHTML = '<span style="font-size:11px; color:#ef4444;">No screenshot attached!</span>';
-      }
+      } else container.innerHTML = '<span style="font-size:11px; color:#ef4444;">No proof!</span>';
     }
 
     async function approveDeposit(depId, userPhone, netAmount) {
       const cleanPhone = String(userPhone).trim();
-      if(!confirm("Are you sure you want to APPROVE this Deposit?")) return;
+      if(!confirm("Approve Deposit?")) return;
       const { data: u } = await _supabase.from('users').select('balance').eq('phone', cleanPhone).single();
       if(u) {
         await _supabase.from('users').update({ balance: u.balance + netAmount }).eq('phone', cleanPhone);
@@ -1209,57 +1142,38 @@
     }
 
     async function rejectDeposit(depId) {
-      if(!confirm("Are you sure you want to REJECT this Deposit?")) return;
-      
-      const choice = prompt("Select Reason:\n1: Wrong / Fake Ref Code\n2: Payment Not Received\n3: Insufficient Amount\n4: Duplicate Submission");
-      
+      if(!confirm("Reject Deposit?")) return;
+      const choice = prompt("Reason Index (1: Wrong Ref, 2: Not Received, 3: Insufficient Amount, 4: Duplicate):");
       if(choice) {
-        const selectedIndex = parseInt(choice.trim()) - 1;
-        const selectedReason = DEPOSIT_REJECT_REASONS[selectedIndex] || "Rejected by Admin";
-
-        const { error } = await _supabase
-          .from('deposits')
-          .update({ status: 'rejected', reason: selectedReason })
-          .eq('id', depId);
-
-        if(!error) {
-          alert("❌ Deposit Rejected Successfully!");
-          loadAdminData();
-        } else {
-          alert("Error: " + error.message);
-        }
+        const selectedReason = DEPOSIT_REJECT_REASONS[parseInt(choice) - 1] || "Rejected by Admin";
+        await _supabase.from('deposits').update({ status: 'rejected', reason: selectedReason }).eq('id', depId);
+        alert("❌ Rejected!"); loadAdminData();
       }
     }
 
     async function approveWithdraw(witId) {
-      if(!confirm("Are you sure you want to MARK PAID this Withdrawal?")) return;
+      if(!confirm("Mark Paid?")) return;
       await _supabase.from('withdrawals').update({ status: 'approved' }).eq('id', witId);
-      alert("✅ Marked Paid!"); loadAdminData();
+      alert("✅ Paid!"); loadAdminData();
     }
 
     async function rejectWithdraw(witId, userPhone, amount) {
       const cleanPhone = String(userPhone).trim();
-      if(!confirm("Are you sure you want to REJECT & REFUND this Withdrawal?")) return;
-      const choice = prompt("Select Reason:\n1: Invalid Account Number\n2: Name Mismatch\n3: Rule Violated\n4: Suspicious Activity");
+      if(!confirm("Reject & Refund Withdrawal?")) return;
+      const choice = prompt("Reason Index (1: Invalid Acc, 2: Name Mismatch, 3: Rule Violated, 4: Suspicious):");
       if(choice) {
-        const selectedIndex = parseInt(choice.trim()) - 1;
-        const selectedReason = WITHDRAW_REJECT_REASONS[selectedIndex] || "Rejected by Admin";
-
+        const selectedReason = WITHDRAW_REJECT_REASONS[parseInt(choice) - 1] || "Rejected by Admin";
         const { data: u } = await _supabase.from('users').select('balance, win_balance').eq('phone', cleanPhone).single();
         if(u) {
           const refundWinBal = amount * 0.35;
-          const newMainBal = (u.balance || 0) + amount;
-          const newWinBal = (u.win_balance || 0) + refundWinBal;
-
           await _supabase.from('users').update({ 
-            balance: newMainBal,
-            win_balance: newWinBal 
+            balance: (u.balance || 0) + amount,
+            win_balance: (u.win_balance || 0) + refundWinBal 
           }).eq('phone', cleanPhone);
         }
 
         await _supabase.from('withdrawals').update({ status: 'rejected', reason: selectedReason }).eq('id', witId);
-        alert(`❌ Withdrawal Rejected & Refunded!\n- Main Balance Refunded: Rs. ${amount}\n- Win Balance Refunded: Rs. ${(amount * 0.35).toFixed(1)}`); 
-        loadAdminData();
+        alert("❌ Refunded!"); loadAdminData();
       }
     }
 
@@ -1268,7 +1182,7 @@
         .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => {
           if(activeTab === 'arena') loadMatches();
           if(activeTab === 'requests') loadRequestsTab();
-          if(activeTab === 'history') loadPlayerHistory();
+          if(activeTab === 'matchHistory') loadMatchHistoryOnly();
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
           if(currentUser) {
