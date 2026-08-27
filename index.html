@@ -212,9 +212,12 @@
       </div>
     </div>
 
+    <!-- MATCH HISTORY TAB INTEGRATED WITH SEARCH -->
     <div id="history" class="page">
       <div class="card" style="border-color: #38bdf8;">
-        <h2>📊 Player History (Last 7 Days)</h2>
+        <h2>📊 Match & Transaction History (Last 7 Days)</h2>
+        <label>🔍 Filter Match by Last 4-Digits (Match ID/Phone):</label>
+        <input type="text" id="historyHashFilter" placeholder="e.g. 1042" maxlength="4" oninput="loadPlayerHistory()" style="margin-bottom: 12px;">
         <div id="playerHistoryList">Loading last week's history...</div>
       </div>
     </div>
@@ -647,6 +650,7 @@
         if(m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') return;
         
         const startTime = new Date(m.match_time).getTime();
+        // AUTO-CLEAR FEATURE: Remove matches older than 30 mins after start time from Arena Tab
         if (now >= startTime + (30 * 60 * 1000)) return;
 
         const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
@@ -713,6 +717,7 @@
       if(!error) { alert("✅ Room details updated and shared!"); loadRequestsTab(); }
     }
 
+    // AUTO-CLEAR REQUESTS TAB (Disappears after 30 mins)
     async function loadRequestsTab() {
       const { data: matches } = await _supabase.from('matches').select('*').order('id', { ascending: false }).limit(25);
       const container = document.getElementById('requestsList'); container.innerHTML = '';
@@ -726,6 +731,7 @@
         const startTime = new Date(m.match_time).getTime();
         const autoMoveTime = startTime + (30 * 60 * 1000); 
 
+        // REQUEST TAB CLEAR RULE: Requests tab clears after 30 minutes from start time!
         if (now >= autoMoveTime) return;
 
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
@@ -764,8 +770,9 @@
                 
                 const resultSubmitTime = startTime + (5 * 60 * 1000); 
 
+                // RESULT SUBMIT OPTION DYNAMIC DISPLAY
                 if (m.result_status === 'pending') {
-                  hostContent += `<p style="color:#f59e0b; font-size:12px; margin-top:8px; text-align:center;">⏳ Result submitted! Waiting for Admin verification...</p>`;
+                  hostContent += `<p style="color:#22c55e; font-size:12px; margin-top:8px; text-align:center; font-weight:bold;">✅ Result submitted! Sent for Admin verification.</p>`;
                 } else if (now < resultSubmitTime) {
                   const remainingSecs = Math.ceil((resultSubmitTime - now) / 1000);
                   const remainingMins = Math.ceil(remainingSecs / 60);
@@ -902,9 +909,13 @@
       });
     }
 
+    // MATCH HISTORY TAB - LAST 7 DAYS & LAST 4 DIGITS HASH SEARCH SYSTEM
     async function loadPlayerHistory() {
       if (!currentUser) return;
       const userPhoneClean = String(currentUser.phone).trim();
+      const searchHash = document.getElementById('historyHashFilter') ? document.getElementById('historyHashFilter').value.trim() : '';
+      
+      // Strict Last 7 days timestamp query
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const txContainer = document.getElementById('playerHistoryList');
       txContainer.innerHTML = 'Loading history...';
@@ -917,8 +928,8 @@
 
       let historyList = [];
 
-      if (deps) deps.forEach(d => historyList.push({ category: 'financial', type: '💳 Deposit', amount: d.amount, status: d.status, reason: d.reason, date: new Date(d.created_at) }));
-      if (wits) wits.forEach(w => historyList.push({ category: 'financial', type: '💸 Withdrawal', amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at) }));
+      if (deps) deps.forEach(d => historyList.push({ category: 'financial', type: '💳 Deposit', amount: d.amount, status: d.status, reason: d.reason, date: new Date(d.created_at), hash: String(d.created_at).slice(-4) }));
+      if (wits) wits.forEach(w => historyList.push({ category: 'financial', type: '💸 Withdrawal', amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at), hash: String(w.created_at).slice(-4) }));
 
       const allMatches = [...(hostMatches || []), ...(guestMatches || [])];
       const uniqueMatches = Array.from(new Set(allMatches.map(m => m.id))).map(id => allMatches.find(m => m.id === id));
@@ -947,8 +958,9 @@
 
         let historyAction = '';
         if (now >= autoMoveTime && !isExpired && m.status !== 'completed' && m.status !== 'rejected' && (isHost || isGuest)) {
+          // Dynamic Result Submission Button in History Tab
           if (m.result_status === 'pending') {
-            historyAction = `<p style="color:#f59e0b; font-size:11px; margin-top:4px;">⏳ Screenshot Submitted! Admin verification pending...</p>`;
+            historyAction = `<p style="color:#22c55e; font-size:11px; margin-top:4px; font-weight:bold;">✅ Screenshot Submitted! Admin verification pending...</p>`;
           } else {
             const remMin = Math.ceil((expiryTime - now) / 60000);
             historyAction = `
@@ -960,19 +972,26 @@
         }
 
         historyList.push({
+          id: m.id,
           category: 'match',
           type: `⚽ ${title} vs ${opponent}`,
           amount: m.entry_fee,
           status: matchStatus,
           date: new Date(m.created_at),
-          actionHtml: historyAction
+          actionHtml: historyAction,
+          hash: String(m.id).slice(-4)
         });
       }
 
       txContainer.innerHTML = '';
 
+      // Last 4 Digits Hash Search Filter
+      if (searchHash !== '') {
+        historyList = historyList.filter(item => String(item.hash).includes(searchHash) || String(item.id || '').includes(searchHash));
+      }
+
       if (historyList.length === 0) {
-        txContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No activity in the last 7 days.</p>';
+        txContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No history found for last 7 days.</p>';
         return;
       }
 
@@ -982,7 +1001,7 @@
         txContainer.innerHTML += `
           <div class="history-card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <b>${item.type}</b>
+              <b>${item.type} <span style="font-size:10px; color:#38bdf8;">(#${item.hash})</span></b>
               <span class="status-badge ${badgeClass}">${item.status}</span>
             </div>
             <div style="font-size:11px; color:#38bdf8; margin-top:3px;">
