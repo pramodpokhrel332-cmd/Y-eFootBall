@@ -63,7 +63,6 @@
     .badge-rejected { background: #ef4444; color: #fff; }
     .history-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 12px; }
     
-    /* Scrollable History Box Design */
     .history-scroll-box {
       max-height: 320px;
       overflow-y: auto;
@@ -225,7 +224,6 @@
       </div>
     </div>
 
-    <!-- DEDICATED MATCH HISTORY TAB (WITH AUTO-SCROLL & ID SEARCH) -->
     <div id="matchHistory" class="page">
       <div class="card" style="border-color: #22c55e;">
         <h2 style="color: #22c55e;">⚽ Last 7 Days Match History</h2>
@@ -236,7 +234,6 @@
       </div>
     </div>
 
-    <!-- DEDICATED WALLET HISTORY TAB (WITH AUTO-SCROLL) -->
     <div id="walletHistory" class="page">
       <div class="card" style="border-color: #38bdf8;">
         <h2>💳 Last 7 Days Wallet History (Deposits & Withdrawals)</h2>
@@ -340,7 +337,6 @@
     </div>
   </div>
 
-  <!-- RESULT UPLOAD MODAL -->
   <div id="resultModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
@@ -389,6 +385,7 @@
     let currentTournTab = 'open';
     let compressedImageData = null;
     let compressedResultData = null;
+    let realtimeChannel = null;
 
     const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Ref Code", "Payment Not Received", "Insufficient Amount", "Duplicate Submission"];
     const WITHDRAW_REJECT_REASONS = ["Invalid Account Number", "Name Mismatch", "Rule Violated", "Suspicious Activity"];
@@ -450,10 +447,10 @@
 
       const matchId = document.getElementById('modalMatchId').value;
       const selectedRadio = document.querySelector('input[name="winnerRadio"]:checked');
-      if(!selectedRadio) { alert("Please select a winner!"); btn.disabled = false; return; }
+      if(!selectedRadio) { alert("Please select a winner!"); btn.disabled = false; btn.innerText = "Upload & Send to Admin"; return; }
 
       const winnerPhone = String(selectedRadio.value).trim();
-      if(!compressedResultData) { alert("Please select screenshot image!"); btn.disabled = false; return; }
+      if(!compressedResultData) { alert("Please select screenshot image!"); btn.disabled = false; btn.innerText = "Upload & Send to Admin"; return; }
 
       const { error } = await _supabase.from('matches').update({
         result_img: compressedResultData,
@@ -541,7 +538,12 @@
       } else alert("Invalid Login Credentials!");
     });
 
-    function logout() { currentUser = null; document.getElementById('mainDashboard').style.display = 'none'; document.getElementById('authScreen').style.display = 'block'; }
+    function logout() { 
+      currentUser = null; 
+      if(realtimeChannel) realtimeChannel.unsubscribe();
+      document.getElementById('mainDashboard').style.display = 'none'; 
+      document.getElementById('authScreen').style.display = 'block'; 
+    }
 
     function switchTab(tabId) {
       activeTab = tabId;
@@ -592,7 +594,7 @@
       const fee = parseFloat(document.getElementById('entryFee').value);
       const mTimeInput = document.getElementById('matchTime').value;
 
-      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', currentUser.phone).single();
+      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', String(currentUser.phone).trim()).single();
       if(!freshUser || freshUser.balance < fee) { alert(`❌ Insufficient Balance!`); btn.disabled = false; return; }
 
       const formattedTime = new Date(mTimeInput).toISOString();
@@ -613,7 +615,7 @@
         alert("❌ Error: " + error.message);
       } else {
         const newBal = freshUser.balance - fee;
-        await _supabase.from('users').update({ balance: newBal }).eq('phone', currentUser.phone);
+        await _supabase.from('users').update({ balance: newBal }).eq('phone', String(currentUser.phone).trim());
         currentUser.balance = newBal;
         document.getElementById('userBalance').innerText = newBal;
 
@@ -628,7 +630,7 @@
       const { data: m } = await _supabase.from('matches').select('*').eq('id', matchId).single();
       if(!m) return;
 
-      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', currentUser.phone).single();
+      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', String(currentUser.phone).trim()).single();
       if(!freshUser || freshUser.balance < m.entry_fee) return alert("❌ Insufficient Balance!");
 
       let currentReqs = m.requests || [];
@@ -808,7 +810,6 @@
       }
     }
 
-    // UPDATED EXCLUSIVE MATCH HISTORY TAB (LAST 7 DAYS + SCROLLABLE + SEARCH FILTER)
     async function loadMatchHistoryOnly() {
       if (!currentUser) return;
       const userPhoneClean = String(currentUser.phone).trim();
@@ -824,7 +825,6 @@
       const allMatches = [...(hostMatches || []), ...(guestMatches || [])];
       let uniqueMatches = Array.from(new Set(allMatches.map(m => m.id))).map(id => allMatches.find(m => m.id === id));
 
-      // ID Search Logic (Empty भए automatic सबै history scroll भएर आउँछ)
       if (searchHash !== '') {
         uniqueMatches = uniqueMatches.filter(m => String(m.id).endsWith(searchHash) || String(m.id).includes(searchHash));
       }
@@ -886,7 +886,6 @@
       });
     }
 
-    // EXCLUSIVE WALLET HISTORY TAB (LAST 7 DAYS)
     async function loadWalletHistoryOnly() {
       if (!currentUser) return;
       const userPhoneClean = String(currentUser.phone).trim();
@@ -994,7 +993,6 @@
       else alert("Error: " + error.message);
     });
 
-    // NEW FUNCTION: DELETE ANNOUNCEMENT (WITH ADMIN PIN VERIFICATION)
     async function deleteAnnouncement(newsId) {
       const pin = prompt("🔑 Enter Admin PIN to Delete Notice:");
       if (pin !== ADMIN_PIN) {
@@ -1222,7 +1220,9 @@
     }
 
     function subscribeRealtime() {
-      _supabase.channel('public-db-changes')
+      if(realtimeChannel) realtimeChannel.unsubscribe();
+
+      realtimeChannel = _supabase.channel('public-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => {
           if(activeTab === 'arena') loadMatches();
           if(activeTab === 'requests') loadRequestsTab();
