@@ -72,7 +72,6 @@
     .tourn-subbtn { flex: 1; padding: 6px; background: #0f172a; border: 1px solid #334155; color: #94a3b8; font-weight: bold; border-radius: 6px; font-size: 12px; cursor: pointer; }
     .tourn-subbtn.active { background: #38bdf8; color: #000; border-color: #38bdf8; }
 
-    /* Modal Styling */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 2000; padding: 15px; }
     .modal-overlay.active { display: flex; }
     .modal-content { background: #1e293b; border: 1px solid #38bdf8; border-radius: 12px; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -296,7 +295,6 @@
 
   </div>
 
-  <!-- Rules Modal -->
   <div id="rulesModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
@@ -305,11 +303,11 @@
       </div>
       <ul class="rule-list">
         <li><b>🏆 Tournament Naming Rule:</b> Host ले Match बनाउँदा उपयुक्त र सभ्य Tournament Name राख्नुपर्छ। गालीगलौज वा आपत्तिजनक नाम राखिएमा Match Auto-Cancel हुनेछ।</li>
-        <li><b>⚽ Match Rules:</b> Host ले Match Accept गरेपछि १० मिनेटभित्र Room ID र Password हालिसक्नुपर्छ। Match सुरु भएको ३० मिनेटपछि Auto-Remove हुन्छ।</li>
-        <li><b>🚫 Fair Play Policy:</b> Match को बीचमा जानी-जानी Network Disconnect गर्ने, Hack/Cheat प्रयोग गर्ने वा अर्काको Owner ID प्रयोग गर्ने Player लाई सिधै Ban गरिनेछ र Money Loss मानिनेछ।</li>
-        <li><b>💳 Deposit Policy:</b> Deposit गर्दा सधैं सही Transaction Ref Code र Clear Screenshot Upload गर्नुपर्छ। प्रति Deposit <b>Rs. 2 Fee</b> काटिनेछ। झुटो Ref Code पठाएमा Account Permanent Block हुन सक्छ।</li>
-        <li><b>💸 Withdrawal Policy:</b> Minimum Withdrawal <b>Rs. 75</b> हो। Withdrawal गर्दा <b>Rs. 5 Charge</b> लाग्छ। Withdrawal गर्न कुल रकमको कम्तीमा <b>35% Win Balance</b> हुनु अनिवार्य छ।</li>
-        <li><b>📸 Match Dispute/Proof:</b> Match जितिसकेपछि Result Upload गर्ने ठाउँमा Scoreboard को Clear Screenshot हाल्नुपर्छ। विवाद भएमा **WhatsApp Support** मा सम्पर्क गर्नुहोस्।</li>
+        <li><b>⚽ Room Timing:</b> Room ID/Pass Match Start Time भन्दा <b>६ मिनेट अघि</b> मात्र सेट/हेर्न पाइनेछ। Match सुरु भएको ५ मिनेट पछि Result Submit खुल्नेछ।</li>
+        <li><b>⏳ Auto Move & Expiry:</b> Match सुरु भएको ३0 मिनेटपछि Active Requests बाट हटेर History मा सर्नेछ। History मा सरेको ४ घण्टा (२४० मिनेट) भित्र Screenshot नहाले Match स्वतः <b>Expired</b> हुनेछ।</li>
+        <li><b>🚫 Fair Play Policy:</b> Match को बीचमा जानी-जानी Network Disconnect गर्ने, Hack/Cheat प्रयोग गर्ने वा अर्काको Owner ID प्रयोग गर्ने Player लाई सिधै Ban गरिनेछ।</li>
+        <li><b>💳 Deposit Policy:</b> Deposit गर्दा सही Transaction Ref Code र Screenshot Upload गर्नु पर्नेछ। प्रति Deposit <b>Rs. 2 Fee</b> काटिनेछ।</li>
+        <li><b>💸 Withdrawal Policy:</b> Minimum Withdrawal <b>Rs. 75</b> हो। <b>Rs. 5 Charge</b> लाग्छ र कुल रकमको कम्तीमा <b>35% Win Balance</b> हुनु अनिवार्य छ।</li>
       </ul>
     </div>
   </div>
@@ -540,8 +538,13 @@
         return; 
       }
 
+      const now = new Date().getTime();
+
       matches.forEach(m => {
-        if(m.status === 'completed') return;
+        if(m.status === 'completed' || m.status === 'expired') return;
+        
+        const startTime = new Date(m.match_time).getTime();
+        if (now >= startTime + (30 * 60 * 1000)) return;
 
         const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
@@ -657,7 +660,12 @@
       const now = new Date().getTime();
 
       matches.forEach(m => {
-        if (m.status === 'completed') return;
+        if (m.status === 'completed' || m.status === 'expired') return;
+
+        const startTime = new Date(m.match_time).getTime();
+        const autoMoveTime = startTime + (30 * 60 * 1000); 
+
+        if (now >= autoMoveTime) return;
 
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
         const isAcceptedGuest = currentUser && (String(currentUser.phone).trim() === String(m.guest_phone).trim());
@@ -684,25 +692,31 @@
               hostContent += `</div>`;
             }
           } else if (m.status === 'full' && (isHost || isAcceptedGuest)) {
-            if (m.room_id && m.room_pass) {
-              hostContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
-              
-              const startTime = new Date(m.match_time).getTime();
-              const fiveMinsAfterStart = startTime + (5 * 60 * 1000); // Start Time + 5 Mins
+            const minUnlockTime = startTime - (6 * 60 * 1000); 
 
-              if (m.result_status === 'pending') {
-                hostContent += `<p style="color:#f59e0b; font-size:12px; margin-top:8px; text-align:center;">⏳ Result submitted! Waiting for Admin verification...</p>`;
-              } else if (now < fiveMinsAfterStart) {
-                const remainingSecs = Math.ceil((fiveMinsAfterStart - now) / 1000);
-                const remainingMins = Math.ceil(remainingSecs / 60);
-                hostContent += `<p style="color:#38bdf8; font-size:12px; margin-top:10px; text-align:center; font-weight:bold;">🎮 Match in progress... Result upload unlocks in ~${remainingMins} min(s).</p>`;
-              } else {
-                hostContent += `<button class="primary-btn" style="margin-top:10px; background:#f59e0b; color:#000;" onclick="submitMatchResult(${m.id}, '${m.host_phone}', '${m.guest_phone}')">📸 Submit Match Result Screenshot</button>`;
-              }
+            if (now < minUnlockTime) {
+              const remMins = Math.ceil((minUnlockTime - now) / 60000);
+              hostContent = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">🔒 Room credentials unlock ~${remMins} min(s) before start time.</p>`;
             } else {
-              hostContent = isHost 
-                ? `<button class="join-btn" style="background:#eab308; color:#000;" onclick="updateRoomCredentials(${m.id})">⚡ Set Room ID & Password Now</button>`
-                : `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Host is setting Room ID & Pass...</p>`;
+              if (m.room_id && m.room_pass) {
+                hostContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
+                
+                const resultSubmitTime = startTime + (5 * 60 * 1000); 
+
+                if (m.result_status === 'pending') {
+                  hostContent += `<p style="color:#f59e0b; font-size:12px; margin-top:8px; text-align:center;">⏳ Result submitted! Waiting for Admin verification...</p>`;
+                } else if (now < resultSubmitTime) {
+                  const remainingSecs = Math.ceil((resultSubmitTime - now) / 1000);
+                  const remainingMins = Math.ceil(remainingSecs / 60);
+                  hostContent += `<p style="color:#38bdf8; font-size:12px; margin-top:10px; text-align:center; font-weight:bold;">🎮 Match in progress... Result upload unlocks in ~${remainingMins} min(s).</p>`;
+                } else {
+                  hostContent += `<button class="primary-btn" style="margin-top:10px; background:#f59e0b; color:#000;" onclick="submitMatchResult(${m.id}, '${m.host_phone}', '${m.guest_phone}')">📸 Submit Match Result Screenshot</button>`;
+                }
+              } else {
+                hostContent = isHost 
+                  ? `<button class="join-btn" style="background:#eab308; color:#000;" onclick="updateRoomCredentials(${m.id})">⚡ Set Room ID & Password Now</button>`
+                  : `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Host is setting Room ID & Pass...</p>`;
+              }
             }
           } else if (myRequest) {
             hostContent = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">⏳ Request Pending Host Acceptance...</p>`;
@@ -716,6 +730,10 @@
             </div>`;
         }
       });
+
+      if (container.innerHTML === '') {
+        container.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No active requests available right now.</p>';
+      }
     }
 
     document.getElementById('depositForm').addEventListener('submit', async function(e) {
@@ -829,19 +847,52 @@
 
       const allMatches = [...(hostMatches || []), ...(guestMatches || [])];
       const uniqueMatches = Array.from(new Set(allMatches.map(m => m.id))).map(id => allMatches.find(m => m.id === id));
+      const now = new Date().getTime();
 
-      uniqueMatches.forEach(m => {
+      for (let m of uniqueMatches) {
         const isHost = String(m.host_phone) === String(currentUser.phone);
+        const isGuest = String(m.guest_phone) === String(currentUser.phone);
         const opponent = isHost ? (m.guest_name || 'Waiting...') : m.host_name;
         const title = m.match_name ? m.match_name : `Match #${m.id}`;
+        
+        const startTime = new Date(m.match_time).getTime();
+        const autoMoveTime = startTime + (30 * 60 * 1000);
+        const expiryTime = autoMoveTime + (240 * 60 * 1000);
+
+        let matchStatus = m.status;
+        let isExpired = false;
+
+        if (now >= autoMoveTime && m.status !== 'completed' && m.status !== 'expired') {
+          if (now >= expiryTime) {
+            isExpired = true;
+            matchStatus = 'expired';
+            await _supabase.from('matches').update({ status: 'expired' }).eq('id', m.id);
+          }
+        }
+
+        let historyAction = '';
+        if (now >= autoMoveTime && !isExpired && m.status !== 'completed' && (isHost || isGuest)) {
+          if (m.result_status === 'pending') {
+            historyAction = `<p style="color:#f59e0b; font-size:11px; margin-top:4px;">⏳ Screenshot Submitted! Admin verification pending...</p>`;
+          } else {
+            const remMin = Math.ceil((expiryTime - now) / 60000);
+            historyAction = `
+              <div style="margin-top:6px; border-top:1px dashed #334155; padding-top:6px;">
+                <span style="color:#ef4444; font-size:10px; font-weight:bold;">⚠️ Auto-Expires in ~${remMin} min(s)</span>
+                <button class="primary-btn" style="padding:6px; font-size:11px; margin-top:4px; background:#f59e0b; color:#000;" onclick="submitMatchResult(${m.id}, '${m.host_phone}', '${m.guest_phone}')">📸 Upload Result Screenshot</button>
+              </div>`;
+          }
+        }
+
         historyList.push({
           category: 'match',
           type: `⚽ ${title} vs ${opponent}`,
           amount: m.entry_fee,
-          status: m.status,
-          date: new Date(m.created_at)
+          status: matchStatus,
+          date: new Date(m.created_at),
+          actionHtml: historyAction
         });
-      });
+      }
 
       txContainer.innerHTML = '';
 
@@ -851,7 +902,7 @@
       }
 
       historyList.sort((a, b) => b.date - a.date).forEach(item => {
-        let badgeClass = item.status === 'approved' || item.status === 'completed' || item.status === 'full' ? 'badge-approved' : (item.status === 'rejected' ? 'badge-rejected' : 'badge-pending');
+        let badgeClass = item.status === 'approved' || item.status === 'completed' || item.status === 'full' ? 'badge-approved' : (item.status === 'rejected' || item.status === 'expired' ? 'badge-rejected' : 'badge-pending');
         
         txContainer.innerHTML += `
           <div class="history-card">
@@ -865,6 +916,7 @@
             <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
               Date: ${item.date.toLocaleString()}
             </div>
+            ${item.actionHtml ? item.actionHtml : ''}
             ${item.reason ? `<div style="color:#ef4444; font-size:11px; margin-top:4px;">Reason: ${item.reason}</div>` : ''}
           </div>`;
       });
@@ -890,6 +942,24 @@
       loadAdminData();
     }
 
+    async function rejectMatchResult(matchId) {
+      if(!confirm("Are you sure you want to REJECT this Match Result?")) return;
+      const reason = prompt("Enter Rejection Reason:", "Invalid Screenshot / Evidence Mismatch");
+      if(!reason) return;
+
+      const { error } = await _supabase.from('matches').update({
+        result_status: 'rejected',
+        status: 'rejected'
+      }).eq('id', matchId);
+
+      if(!error) {
+        alert("❌ Match Result Rejected!");
+        loadAdminData();
+      } else {
+        alert("Error: " + error.message);
+      }
+    }
+
     async function loadAdminData() {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -910,6 +980,7 @@
               ${m.result_img ? `<img src="${m.result_img}" style="width:100%; max-height:200px; object-fit:contain; border-radius:6px; margin-top:6px; border:1px solid #38bdf8;">` : ''}
               <div class="action-row" style="margin-top:8px;">
                 <button class="accept-btn" onclick="approveMatchWinner(${m.id}, '${m.claimed_winner}', ${prize})">Approve Winner & Pay</button>
+                <button class="reject-btn" onclick="rejectMatchResult(${m.id})">Reject Result</button>
               </div>
             </div>`;
         });
