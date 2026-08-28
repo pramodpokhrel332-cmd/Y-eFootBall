@@ -390,6 +390,40 @@
     const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Ref Code", "Payment Not Received", "Insufficient Amount", "Duplicate Submission"];
     const WITHDRAW_REJECT_REASONS = ["Invalid Account Number", "Name Mismatch", "Rule Violated", "Suspicious Activity"];
 
+    // --- LocalStorage Session Persistence Logic ---
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = localStorage.getItem('yeFootballUser');
+      if (savedUser) {
+        try {
+          currentUser = JSON.parse(savedUser);
+          setupUserDashboard(currentUser);
+          refreshUserData();
+        } catch (e) {
+          localStorage.removeItem('yeFootballUser');
+        }
+      }
+    });
+
+    function setupUserDashboard(user) {
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('mainDashboard').style.display = 'block';
+      document.getElementById('displayPlayerName').innerText = user.name + " (" + user.owner_id + ")";
+      document.getElementById('userBalance').innerText = user.balance || 0;
+      document.getElementById('userWinBalance').innerText = user.win_balance || 0;
+      loadNews(); loadMatches(); subscribeRealtime();
+    }
+
+    async function refreshUserData() {
+      if(!currentUser) return;
+      const { data } = await _supabase.from('users').select('*').eq('phone', currentUser.phone).maybeSingle();
+      if(data) {
+        currentUser = data;
+        localStorage.setItem('yeFootballUser', JSON.stringify(data));
+        document.getElementById('userBalance').innerText = currentUser.balance || 0;
+        document.getElementById('userWinBalance').innerText = currentUser.win_balance || 0;
+      }
+    }
+
     function openRulesModal() { document.getElementById('rulesModal').classList.add('active'); }
     function closeRulesModal() { document.getElementById('rulesModal').classList.remove('active'); }
 
@@ -528,18 +562,14 @@
       const { data } = await _supabase.from('users').select('*').eq('phone', phone).eq('pass', pass).maybeSingle();
       if (data) {
         currentUser = data;
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('mainDashboard').style.display = 'block';
-        document.getElementById('displayPlayerName').innerText = currentUser.name + " (" + currentUser.owner_id + ")";
-        document.getElementById('userBalance').innerText = currentUser.balance || 0;
-        document.getElementById('userWinBalance').innerText = currentUser.win_balance || 0;
-        
-        loadNews(); loadMatches(); subscribeRealtime();
+        localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
+        setupUserDashboard(currentUser);
       } else alert("Invalid Login Credentials!");
     });
 
     function logout() { 
       currentUser = null; 
+      localStorage.removeItem('yeFootballUser');
       if(realtimeChannel) realtimeChannel.unsubscribe();
       document.getElementById('mainDashboard').style.display = 'none'; 
       document.getElementById('authScreen').style.display = 'block'; 
@@ -617,6 +647,7 @@
         const newBal = freshUser.balance - fee;
         await _supabase.from('users').update({ balance: newBal }).eq('phone', String(currentUser.phone).trim());
         currentUser.balance = newBal;
+        localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
         document.getElementById('userBalance').innerText = newBal;
 
         alert("✅ Tournament Published Successfully!"); 
@@ -670,7 +701,8 @@
         if(m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') return;
         
         const startTime = new Date(m.match_time).getTime();
-        if (now >= startTime + (30 * 60 * 1000)) return;
+        // Hide after 4 hours (240 minutes)
+        if (now >= startTime + (240 * 60 * 1000)) return;
 
         const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
@@ -743,9 +775,9 @@
         if (m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') return;
 
         const startTime = new Date(m.match_time).getTime();
-        const autoMoveTime = startTime + (30 * 60 * 1000); 
+        const expiryTime = startTime + (240 * 60 * 1000); // Extended to 4 Hours (240 mins)
 
-        if (now >= autoMoveTime) return;
+        if (now >= expiryTime) return;
 
         const isHost = currentUser && (String(currentUser.phone).trim() === String(m.host_phone).trim());
         const isAcceptedGuest = currentUser && (String(currentUser.phone).trim() === String(m.guest_phone).trim());
@@ -841,8 +873,7 @@
         const title = m.match_name ? m.match_name : `Match #${m.id}`;
         
         const startTime = new Date(m.match_time).getTime();
-        const autoMoveTime = startTime + (30 * 60 * 1000); 
-        const expiryTime = startTime + (240 * 60 * 1000);  
+        const expiryTime = startTime + (240 * 60 * 1000); // 4 Hours (240 mins) expiration
 
         let matchStatus = m.status;
         let isExpired = false;
@@ -857,7 +888,7 @@
         if (!isExpired && m.status !== 'completed' && m.status !== 'rejected') {
           if (m.result_status === 'pending') {
             historyAction = `<p style="color:#22c55e; font-size:11px; margin-top:4px; font-weight:bold;">✅ Result Submitted! Admin Verification Pending...</p>`;
-          } else if (now >= autoMoveTime && now < expiryTime) {
+          } else if (now < expiryTime) {
             const remMin = Math.ceil((expiryTime - now) / 60000);
             historyAction = `
               <div style="margin-top:6px; border-top:1px dashed #334155; padding-top:6px;">
@@ -974,6 +1005,7 @@
 
         await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', String(currentUser.phone).trim());
         currentUser.balance = newMainBal; currentUser.win_balance = newWinBal;
+        localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
         document.getElementById('userBalance').innerText = newMainBal;
         document.getElementById('userWinBalance').innerText = newWinBal;
 
@@ -1234,6 +1266,7 @@
               if(data) { 
                 currentUser.balance = data.balance; 
                 currentUser.win_balance = data.win_balance; 
+                localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
                 document.getElementById('userBalance').innerText = currentUser.balance; 
                 document.getElementById('userWinBalance').innerText = currentUser.win_balance || 0; 
               }
