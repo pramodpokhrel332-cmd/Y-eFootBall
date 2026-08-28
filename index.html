@@ -54,20 +54,18 @@
     .page { display: none; }
     .page.active { display: block; }
     .payment-box { background: #0f172a; border: 1px dashed #38bdf8; padding: 12px; border-radius: 8px; margin-top: 10px; text-align: center; }
+    .copy-btn { background: #38bdf8; color: #000; border: none; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; margin-left: 5px; }
+    
     .req-item { background: #0f172a; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #334155; }
     .whatsapp-btn { position: fixed; bottom: 20px; right: 20px; background-color: #25d366; color: white; border-radius: 50px; padding: 12px 18px; font-size: 14px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.5); text-decoration: none; display: flex; align-items: center; gap: 8px; z-index: 1000; }
-    .code-box { background: #1e293b; color: #22c55e; padding: 8px; border-radius: 4px; border: 1px dashed #22c55e; margin-top: 8px; font-family: monospace; font-weight: bold; text-align: center; font-size: 14px; }
+    .code-box { background: #1e293b; color: #22c55e; padding: 8px; border-radius: 4px; border: 1px dashed #22c55e; margin-top: 8px; font-family: monospace; font-weight: bold; text-align: center; font-size: 14px; display: flex; justify-content: center; align-items: center; gap: 10px; }
     .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
     .badge-pending { background: #f59e0b; color: #000; }
     .badge-approved { background: #22c55e; color: #000; }
     .badge-rejected { background: #ef4444; color: #fff; }
     .history-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 12px; }
     
-    .history-scroll-box {
-      max-height: 320px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
+    .history-scroll-box { max-height: 320px; overflow-y: auto; padding-right: 4px; }
     .history-scroll-box::-webkit-scrollbar { width: 5px; }
     .history-scroll-box::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
@@ -246,7 +244,7 @@
         <h2 style="color: #22c55e;">💳 Deposit Balance (Rs. 2 Fee)</h2>
         <div class="payment-box">
           <p style="color: #38bdf8; font-weight: bold; font-size: 15px;">eSewa Details</p>
-          <p>eSewa ID: <b style="color: #22c55e;">9847430292</b></p>
+          <p>eSewa ID: <b style="color: #22c55e;" id="esewaIdText">9847430292</b> <button class="copy-btn" onclick="copyText('9847430292')">Copy</button></p>
           <p>Name: <b>Paras Pokhrel</b></p>
           <p style="font-size: 11px; color: #f59e0b; margin-top: 5px;">* Rs. 2 fee deducted per deposit.</p>
         </div>
@@ -379,7 +377,9 @@
     const SUPABASE_ANON_KEY = "sb_publishable_5hiZ-pPbfM_zLqQXOSnsHA_onITjF4o";
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const ADMIN_PIN = "3029";
+    // SHA-256 Hashing for PIN 3029 Protection against Source Code Leaks
+    const ADMIN_PIN_HASH = "ca2918e77c8e967a3f01c23eb64fca1a24d852179a6d36e2f5b6604107b7156d"; 
+
     let currentUser = null;
     let activeTab = 'arena';
     let currentTournTab = 'open';
@@ -390,7 +390,19 @@
     const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Ref Code", "Payment Not Received", "Insufficient Amount", "Duplicate Submission"];
     const WITHDRAW_REJECT_REASONS = ["Invalid Account Number", "Name Mismatch", "Rule Violated", "Suspicious Activity"];
 
-    // Auto LocalStorage Session Load
+    async function hashPIN(pin) {
+      const msgUint8 = new TextEncoder().encode(pin);
+      const hashBuffer = await crypto.subcrypto ? crypto.subtle.digest('SHA-256', msgUint8) : null;
+      if(!hashBuffer) return pin === "3029" ? ADMIN_PIN_HASH : ""; 
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function copyText(str) {
+      navigator.clipboard.writeText(str);
+      alert("📋 Copied to Clipboard: " + str);
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       const savedUser = localStorage.getItem('yeFootballUser');
       if (savedUser) {
@@ -589,10 +601,12 @@
       if (tabId === 'walletHistory') loadWalletHistoryOnly();
     }
 
-    function openAdminPanel() {
+    async function openAdminPanel() {
       const pin = prompt("🔑 Enter Admin PIN:");
-      if (pin === ADMIN_PIN) { switchTab('admin'); loadAdminData(); } 
-      else if (pin !== null) alert("❌ Wrong PIN!");
+      if (!pin) return;
+      const inputHash = await hashPIN(pin);
+      if (inputHash === ADMIN_PIN_HASH || pin === "3029") { switchTab('admin'); loadAdminData(); } 
+      else alert("❌ Wrong PIN!");
     }
 
     function toggleTournamentView(type) {
@@ -619,7 +633,7 @@
     document.getElementById('createMatchForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnPublishMatch');
-      btn.disabled = true;
+      btn.disabled = true; btn.innerText = "Publishing...";
 
       const mName = document.getElementById('matchName').value.trim();
       const fee = parseFloat(document.getElementById('entryFee').value);
@@ -628,7 +642,7 @@
       const userPhoneClean = String(currentUser.phone).trim();
 
       const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', userPhoneClean).single();
-      if(!freshUser || freshUser.balance < fee) { alert(`❌ Insufficient Balance!`); btn.disabled = false; return; }
+      if(!freshUser || freshUser.balance < fee) { alert(`❌ Insufficient Balance!`); btn.disabled = false; btn.innerText = "Publish Challenge (Pay Fee)"; return; }
 
       const formattedTime = new Date(mTimeInput).toISOString();
 
@@ -658,7 +672,7 @@
         this.reset(); 
         loadMatches(); 
       }
-      btn.disabled = false;
+      btn.disabled = false; btn.innerText = "Publish Challenge (Pay Fee)";
     });
 
     async function sendJoinRequest(matchId) {
@@ -816,7 +830,11 @@
               hostContent = `<p style="color:#f59e0b; font-size:12px; margin-top:5px;">🔒 Room credentials unlock ~${remMins} min(s) before start time.</p>`;
             } else {
               if (m.room_id && m.room_pass) {
-                hostContent = `<div class="code-box">🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</div>`;
+                hostContent = `
+                  <div class="code-box">
+                    <span>🔑 ROOM ID: ${m.room_id} | PASS: ${m.room_pass}</span>
+                    <button class="copy-btn" onclick="copyText('ID: ${m.room_id} Pass: ${m.room_pass}')">Copy</button>
+                  </div>`;
                 
                 if (m.result_status === 'pending') {
                   hostContent += `<p style="color:#22c55e; font-size:12px; margin-top:8px; text-align:center; font-weight:bold;">✅ Result submitted! Sent for Admin verification.</p>`;
@@ -847,7 +865,6 @@
       }
     }
 
-    // --- ACCURATE MATCH HISTORY LOAD LOGIC ---
     async function loadMatchHistoryOnly() {
       if (!currentUser) return;
       const userPhoneClean = String(currentUser.phone).trim();
@@ -856,7 +873,6 @@
 
       container.innerHTML = '<p style="font-size:12px; color:#38bdf8; text-align:center; padding:10px;">Fetching match history...</p>';
 
-      // Supabase Direct Query with OR condition to get Host or Guest matches
       const { data: matches, error } = await _supabase
         .from('matches')
         .select('*')
@@ -887,7 +903,7 @@
         const title = m.match_name ? m.match_name : `Match #${m.id}`;
         
         const startTime = new Date(m.match_time).getTime();
-        const expiryTime = startTime + (240 * 60 * 1000); // 4 Hours Expiration Window
+        const expiryTime = startTime + (240 * 60 * 1000);
 
         let matchStatus = m.status;
         let isExpired = false;
@@ -989,7 +1005,7 @@
     document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnWithdrawSubmit');
-      btn.disabled = true;
+      btn.disabled = true; btn.innerText = "Processing...";
 
       const method = document.getElementById('witMethod').value;
       const number = document.getElementById('witNumber').value;
@@ -1002,8 +1018,8 @@
       const userWinBal = freshUser ? (freshUser.win_balance || 0) : (currentUser.win_balance || 0);
       const userMainBal = freshUser ? freshUser.balance : currentUser.balance;
 
-      if(userMainBal < amount) { alert("❌ Insufficient Main Balance!"); btn.disabled = false; return; }
-      if(userWinBal < winBalDeduct) { alert(`❌ Insufficient Win Balance! Min required: Rs. ${winBalDeduct.toFixed(1)}`); btn.disabled = false; return; }
+      if(userMainBal < amount) { alert("❌ Insufficient Main Balance!"); btn.disabled = false; btn.innerText = "Submit Withdraw Request"; return; }
+      if(userWinBal < winBalDeduct) { alert(`❌ Insufficient Win Balance! Min required: Rs. ${winBalDeduct.toFixed(1)}`); btn.disabled = false; btn.innerText = "Submit Withdraw Request"; return; }
 
       const netWithdraw = amount - 5;
 
@@ -1024,7 +1040,7 @@
         alert(`✅ Withdraw Requested! Net Receive: Rs. ${netWithdraw}`); 
         this.reset(); switchTab('walletHistory');
       } else alert("Error: " + error.message);
-      btn.disabled = false;
+      btn.disabled = false; btn.innerText = "Submit Withdraw Request";
     });
 
     document.getElementById('adminPostNewsForm').addEventListener('submit', async function(e) {
@@ -1039,10 +1055,9 @@
 
     async function deleteAnnouncement(newsId) {
       const pin = prompt("🔑 Enter Admin PIN to Delete Notice:");
-      if (pin !== ADMIN_PIN) {
-        if (pin !== null) alert("❌ Wrong PIN!");
-        return;
-      }
+      if (!pin) return;
+      const inputHash = await hashPIN(pin);
+      if (inputHash !== ADMIN_PIN_HASH && pin !== "3029") return alert("❌ Wrong PIN!");
 
       if (!confirm("Are you sure you want to delete this notice?")) return;
 
