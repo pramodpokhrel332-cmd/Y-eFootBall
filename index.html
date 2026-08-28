@@ -420,8 +420,8 @@
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('mainDashboard').style.display = 'block';
       document.getElementById('displayPlayerName').innerText = user.name + " (" + user.owner_id + ")";
-      document.getElementById('userBalance').innerText = user.balance || 0;
-      document.getElementById('userWinBalance').innerText = user.win_balance || 0;
+      document.getElementById('userBalance').innerText = parseFloat(user.balance || 0).toFixed(2);
+      document.getElementById('userWinBalance').innerText = parseFloat(user.win_balance || 0).toFixed(2);
       loadNews(); loadMatches(); subscribeRealtime();
     }
 
@@ -432,8 +432,8 @@
       if(data) {
         currentUser = data;
         localStorage.setItem('yeFootballUser', JSON.stringify(data));
-        document.getElementById('userBalance').innerText = currentUser.balance || 0;
-        document.getElementById('userWinBalance').innerText = currentUser.win_balance || 0;
+        document.getElementById('userBalance').innerText = parseFloat(currentUser.balance || 0).toFixed(2);
+        document.getElementById('userWinBalance').innerText = parseFloat(currentUser.win_balance || 0).toFixed(2);
       }
     }
 
@@ -662,11 +662,11 @@
       if (error) {
         alert("❌ Error: " + error.message);
       } else {
-        const newBal = freshUser.balance - fee;
+        const newBal = parseFloat((freshUser.balance - fee).toFixed(2));
         await _supabase.from('users').update({ balance: newBal }).eq('phone', userPhoneClean);
         currentUser.balance = newBal;
         localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
-        document.getElementById('userBalance').innerText = newBal;
+        document.getElementById('userBalance').innerText = newBal.toFixed(2);
 
         alert("✅ Tournament Published Successfully!"); 
         this.reset(); 
@@ -758,7 +758,8 @@
       const { data: guestUser } = await _supabase.from('users').select('balance').eq('phone', cleanPhone).single();
       if(!guestUser || guestUser.balance < entryFee) return alert("❌ Opponent insufficient balance!");
 
-      await _supabase.from('users').update({ balance: guestUser.balance - entryFee }).eq('phone', cleanPhone);
+      const newBal = parseFloat((guestUser.balance - entryFee).toFixed(2));
+      await _supabase.from('users').update({ balance: newBal }).eq('phone', cleanPhone);
 
       const { error: updateErr } = await _supabase.from('matches').update({
         guest_name: guestName,
@@ -1002,6 +1003,7 @@
       btn.innerText = "Submit Deposit Proof"; btn.disabled = false;
     });
 
+    // FIXED WITHDRAW FORM SUBMISSION LOGIC WITH EXACT DEDUCTION
     document.getElementById('withdrawForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnWithdrawSubmit');
@@ -1011,15 +1013,27 @@
       const number = document.getElementById('witNumber').value;
       const name = document.getElementById('witName').value;
       const amount = parseFloat(document.getElementById('witAmount').value);
-      const winBalDeduct = amount * 0.35;
+      
+      // Calculate 35% win balance required deduction
+      const winBalDeduct = parseFloat((amount * 0.35).toFixed(2));
       
       const userPhoneClean = String(currentUser.phone).trim();
       const { data: freshUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', userPhoneClean).single();
-      const userWinBal = freshUser ? (freshUser.win_balance || 0) : (currentUser.win_balance || 0);
-      const userMainBal = freshUser ? freshUser.balance : currentUser.balance;
+      const userWinBal = freshUser ? parseFloat(freshUser.win_balance || 0) : parseFloat(currentUser.win_balance || 0);
+      const userMainBal = freshUser ? parseFloat(freshUser.balance || 0) : parseFloat(currentUser.balance || 0);
 
-      if(userMainBal < amount) { alert("❌ Insufficient Main Balance!"); btn.disabled = false; btn.innerText = "Submit Withdraw Request"; return; }
-      if(userWinBal < winBalDeduct) { alert(`❌ Insufficient Win Balance! Min required: Rs. ${winBalDeduct.toFixed(1)}`); btn.disabled = false; btn.innerText = "Submit Withdraw Request"; return; }
+      if(userMainBal < amount) { 
+        alert("❌ Insufficient Main Balance!"); 
+        btn.disabled = false; 
+        btn.innerText = "Submit Withdraw Request"; 
+        return; 
+      }
+      if(userWinBal < winBalDeduct) { 
+        alert(`❌ Insufficient Win Balance! Required minimum Rs. ${winBalDeduct.toFixed(2)} in Win Balance.`); 
+        btn.disabled = false; 
+        btn.innerText = "Submit Withdraw Request"; 
+        return; 
+      }
 
       const netWithdraw = amount - 5;
 
@@ -1028,18 +1042,28 @@
       ]);
 
       if(!error) {
-        const newMainBal = userMainBal - amount;
-        const newWinBal = userWinBal - winBalDeduct;
+        // Main balance bata Total withdrawal amount katne, Win balance bata 35% katne
+        const newMainBal = parseFloat((userMainBal - amount).toFixed(2));
+        const newWinBal = parseFloat((userWinBal - winBalDeduct).toFixed(2));
 
-        await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', userPhoneClean);
-        currentUser.balance = newMainBal; currentUser.win_balance = newWinBal;
-        localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
-        document.getElementById('userBalance').innerText = newMainBal;
-        document.getElementById('userWinBalance').innerText = newWinBal;
+        const { error: userUpdateErr } = await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', userPhoneClean);
 
-        alert(`✅ Withdraw Requested! Net Receive: Rs. ${netWithdraw}`); 
-        this.reset(); switchTab('walletHistory');
+        if (!userUpdateErr) {
+          currentUser.balance = newMainBal; 
+          currentUser.win_balance = newWinBal;
+          localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
+          
+          document.getElementById('userBalance').innerText = newMainBal.toFixed(2);
+          document.getElementById('userWinBalance').innerText = newWinBal.toFixed(2);
+
+          alert(`✅ Withdraw Requested! Net Receive: Rs. ${netWithdraw}`); 
+          this.reset(); 
+          switchTab('walletHistory');
+        } else {
+          alert("Error updating balance: " + userUpdateErr.message);
+        }
       } else alert("Error: " + error.message);
+      
       btn.disabled = false; btn.innerText = "Submit Withdraw Request";
     });
 
@@ -1108,8 +1132,8 @@
       let { data: wUser } = await _supabase.from('users').select('*').eq('phone', targetPhoneStr).maybeSingle();
       if(!wUser) return alert("❌ Winner User Not Found!");
 
-      const newWinBal = parseFloat(wUser.win_balance || 0) + parseFloat(prizeAmount);
-      const newMainBal = parseFloat(wUser.balance || 0) + parseFloat(prizeAmount);
+      const newWinBal = parseFloat((parseFloat(wUser.win_balance || 0) + parseFloat(prizeAmount)).toFixed(2));
+      const newMainBal = parseFloat((parseFloat(wUser.balance || 0) + parseFloat(prizeAmount)).toFixed(2));
 
       await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('id', wUser.id);
       await _supabase.from('matches').update({ status: 'completed', result_status: 'approved' }).eq('id', matchId);
@@ -1234,7 +1258,8 @@
       if(!confirm("Approve Deposit?")) return;
       const { data: u } = await _supabase.from('users').select('balance').eq('phone', cleanPhone).single();
       if(u) {
-        await _supabase.from('users').update({ balance: u.balance + netAmount }).eq('phone', cleanPhone);
+        const updatedBal = parseFloat((u.balance + netAmount).toFixed(2));
+        await _supabase.from('users').update({ balance: updatedBal }).eq('phone', cleanPhone);
         await _supabase.from('deposits').update({ status: 'approved' }).eq('id', depId);
         alert("✅ Approved!"); loadAdminData();
       }
@@ -1264,10 +1289,13 @@
         const selectedReason = WITHDRAW_REJECT_REASONS[parseInt(choice) - 1] || "Rejected by Admin";
         const { data: u } = await _supabase.from('users').select('balance, win_balance').eq('phone', cleanPhone).single();
         if(u) {
-          const refundWinBal = amount * 0.35;
+          const refundWinBal = parseFloat((amount * 0.35).toFixed(2));
+          const newBal = parseFloat(((u.balance || 0) + amount).toFixed(2));
+          const newWinBal = parseFloat(((u.win_balance || 0) + refundWinBal).toFixed(2));
+
           await _supabase.from('users').update({ 
-            balance: (u.balance || 0) + amount,
-            win_balance: (u.win_balance || 0) + refundWinBal 
+            balance: newBal,
+            win_balance: newWinBal 
           }).eq('phone', cleanPhone);
         }
 
@@ -1289,11 +1317,11 @@
           if(currentUser) {
             _supabase.from('users').select('balance, win_balance').eq('phone', String(currentUser.phone).trim()).single().then(({data}) => {
               if(data) { 
-                currentUser.balance = data.balance; 
-                currentUser.win_balance = data.win_balance; 
+                currentUser.balance = parseFloat(data.balance || 0).toFixed(2); 
+                currentUser.win_balance = parseFloat(data.win_balance || 0).toFixed(2); 
                 localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
                 document.getElementById('userBalance').innerText = currentUser.balance; 
-                document.getElementById('userWinBalance').innerText = currentUser.win_balance || 0; 
+                document.getElementById('userWinBalance').innerText = currentUser.win_balance; 
               }
             });
           }
