@@ -390,7 +390,7 @@
     const DEPOSIT_REJECT_REASONS = ["Wrong / Fake Ref Code", "Payment Not Received", "Insufficient Amount", "Duplicate Submission"];
     const WITHDRAW_REJECT_REASONS = ["Invalid Account Number", "Name Mismatch", "Rule Violated", "Suspicious Activity"];
 
-    // --- LocalStorage Session Persistence Logic ---
+    // Auto LocalStorage Session Load
     window.addEventListener('DOMContentLoaded', () => {
       const savedUser = localStorage.getItem('yeFootballUser');
       if (savedUser) {
@@ -415,7 +415,8 @@
 
     async function refreshUserData() {
       if(!currentUser) return;
-      const { data } = await _supabase.from('users').select('*').eq('phone', currentUser.phone).maybeSingle();
+      const cleanPhone = String(currentUser.phone).trim();
+      const { data } = await _supabase.from('users').select('*').eq('phone', cleanPhone).maybeSingle();
       if(data) {
         currentUser = data;
         localStorage.setItem('yeFootballUser', JSON.stringify(data));
@@ -624,7 +625,9 @@
       const fee = parseFloat(document.getElementById('entryFee').value);
       const mTimeInput = document.getElementById('matchTime').value;
 
-      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', String(currentUser.phone).trim()).single();
+      const userPhoneClean = String(currentUser.phone).trim();
+
+      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', userPhoneClean).single();
       if(!freshUser || freshUser.balance < fee) { alert(`❌ Insufficient Balance!`); btn.disabled = false; return; }
 
       const formattedTime = new Date(mTimeInput).toISOString();
@@ -633,19 +636,20 @@
         match_name: mName,
         host_name: currentUser.name, 
         host_owner_id: currentUser.owner_id, 
-        host_phone: String(currentUser.phone).trim(), 
+        host_phone: userPhoneClean, 
         entry_fee: fee, 
         match_time: formattedTime,
         status: 'open',
         result_status: 'none',
-        requests: [] 
+        requests: [],
+        created_at: new Date().toISOString()
       }]);
 
       if (error) {
         alert("❌ Error: " + error.message);
       } else {
         const newBal = freshUser.balance - fee;
-        await _supabase.from('users').update({ balance: newBal }).eq('phone', String(currentUser.phone).trim());
+        await _supabase.from('users').update({ balance: newBal }).eq('phone', userPhoneClean);
         currentUser.balance = newBal;
         localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
         document.getElementById('userBalance').innerText = newBal;
@@ -661,16 +665,18 @@
       const { data: m } = await _supabase.from('matches').select('*').eq('id', matchId).single();
       if(!m) return;
 
-      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', String(currentUser.phone).trim()).single();
+      const userPhoneClean = String(currentUser.phone).trim();
+
+      const { data: freshUser } = await _supabase.from('users').select('balance').eq('phone', userPhoneClean).single();
       if(!freshUser || freshUser.balance < m.entry_fee) return alert("❌ Insufficient Balance!");
 
       let currentReqs = m.requests || [];
-      const alreadyRequested = currentReqs.some(r => String(r.phone).trim() === String(currentUser.phone).trim());
+      const alreadyRequested = currentReqs.some(r => String(r.phone).trim() === userPhoneClean);
 
       if (alreadyRequested) return alert("⚠️ Request already sent!");
 
       currentReqs.push({
-        phone: String(currentUser.phone).trim(),
+        phone: userPhoneClean,
         name: currentUser.name,
         owner_id: currentUser.owner_id
       });
@@ -701,7 +707,6 @@
         if(m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') return;
         
         const startTime = new Date(m.match_time).getTime();
-        // Hide after 4 hours (240 minutes)
         if (now >= startTime + (240 * 60 * 1000)) return;
 
         const prize = (m.entry_fee * 2 * 0.9).toFixed(1);
@@ -775,7 +780,7 @@
         if (m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') return;
 
         const startTime = new Date(m.match_time).getTime();
-        const expiryTime = startTime + (240 * 60 * 1000); // Extended to 4 Hours (240 mins)
+        const expiryTime = startTime + (240 * 60 * 1000);
 
         if (now >= expiryTime) return;
 
@@ -842,38 +847,47 @@
       }
     }
 
+    // --- ACCURATE MATCH HISTORY LOAD LOGIC ---
     async function loadMatchHistoryOnly() {
       if (!currentUser) return;
       const userPhoneClean = String(currentUser.phone).trim();
       const searchHash = document.getElementById('matchHashFilter') ? document.getElementById('matchHashFilter').value.trim() : '';
       const container = document.getElementById('matchHistoryContainer');
 
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const now = new Date().getTime();
+      container.innerHTML = '<p style="font-size:12px; color:#38bdf8; text-align:center; padding:10px;">Fetching match history...</p>';
 
-      const { data: hostMatches } = await _supabase.from('matches').select('*').eq('host_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
-      const { data: guestMatches } = await _supabase.from('matches').select('*').eq('guest_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
+      // Supabase Direct Query with OR condition to get Host or Guest matches
+      const { data: matches, error } = await _supabase
+        .from('matches')
+        .select('*')
+        .or(`host_phone.eq.${userPhoneClean},guest_phone.eq.${userPhoneClean}`)
+        .order('id', { ascending: false });
 
-      const allMatches = [...(hostMatches || []), ...(guestMatches || [])];
-      let uniqueMatches = Array.from(new Set(allMatches.map(m => m.id))).map(id => allMatches.find(m => m.id === id));
-
-      if (searchHash !== '') {
-        uniqueMatches = uniqueMatches.filter(m => String(m.id).endsWith(searchHash) || String(m.id).includes(searchHash));
-      }
-
-      if (uniqueMatches.length === 0) {
+      if (error || !matches || matches.length === 0) {
         container.innerHTML = '<p style="font-size:12px; color:#94a3b8; text-align:center; padding:10px;">No match history found for the last 7 days.</p>';
         return;
       }
 
+      let filteredMatches = matches;
+      if (searchHash !== '') {
+        filteredMatches = matches.filter(m => String(m.id).endsWith(searchHash) || String(m.id).includes(searchHash));
+      }
+
+      if (filteredMatches.length === 0) {
+        container.innerHTML = '<p style="font-size:12px; color:#94a3b8; text-align:center; padding:10px;">No matching ID found in history.</p>';
+        return;
+      }
+
+      const now = new Date().getTime();
       container.innerHTML = '';
-      uniqueMatches.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).forEach(async m => {
+
+      filteredMatches.forEach(m => {
         const isHost = String(m.host_phone).trim() === userPhoneClean;
         const opponent = isHost ? (m.guest_name || 'Waiting...') : m.host_name;
         const title = m.match_name ? m.match_name : `Match #${m.id}`;
         
         const startTime = new Date(m.match_time).getTime();
-        const expiryTime = startTime + (240 * 60 * 1000); // 4 Hours (240 mins) expiration
+        const expiryTime = startTime + (240 * 60 * 1000); // 4 Hours Expiration Window
 
         let matchStatus = m.status;
         let isExpired = false;
@@ -881,7 +895,6 @@
         if (now >= expiryTime && m.status !== 'completed' && m.status !== 'rejected') {
           isExpired = true;
           matchStatus = 'expired';
-          await _supabase.from('matches').update({ status: 'expired' }).eq('id', m.id);
         }
 
         let historyAction = '';
@@ -922,17 +935,15 @@
       const userPhoneClean = String(currentUser.phone).trim();
       const container = document.getElementById('walletHistoryContainer');
 
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason, created_at').eq('user_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
-      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason, created_at').eq('user_phone', userPhoneClean).gte('created_at', sevenDaysAgo);
+      const { data: deps } = await _supabase.from('deposits').select('amount, status, reason, created_at').eq('user_phone', userPhoneClean).order('id', { ascending: false });
+      const { data: wits } = await _supabase.from('withdrawals').select('amount, status, reason, created_at').eq('user_phone', userPhoneClean).order('id', { ascending: false });
 
       let walletList = [];
       if (deps) deps.forEach(d => walletList.push({ type: '💳 Deposit', amount: d.amount, status: d.status, reason: d.reason, date: new Date(d.created_at) }));
       if (wits) wits.forEach(w => walletList.push({ type: '💸 Withdrawal', amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at) }));
 
       if (walletList.length === 0) {
-        container.innerHTML = '<p style="font-size:12px; color:#94a3b8; text-align:center; padding:10px;">No deposits or withdrawals in the last 7 days.</p>';
+        container.innerHTML = '<p style="font-size:12px; color:#94a3b8; text-align:center; padding:10px;">No deposits or withdrawals found.</p>';
         return;
       }
 
@@ -986,7 +997,8 @@
       const amount = parseFloat(document.getElementById('witAmount').value);
       const winBalDeduct = amount * 0.35;
       
-      const { data: freshUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', String(currentUser.phone).trim()).single();
+      const userPhoneClean = String(currentUser.phone).trim();
+      const { data: freshUser } = await _supabase.from('users').select('balance, win_balance').eq('phone', userPhoneClean).single();
       const userWinBal = freshUser ? (freshUser.win_balance || 0) : (currentUser.win_balance || 0);
       const userMainBal = freshUser ? freshUser.balance : currentUser.balance;
 
@@ -996,14 +1008,14 @@
       const netWithdraw = amount - 5;
 
       const { error } = await _supabase.from('withdrawals').insert([
-        { user_phone: String(currentUser.phone).trim(), user_name: currentUser.name, method, number, acc_name: name, amount, net_amount: netWithdraw, status: 'pending', created_at: new Date().toISOString() }
+        { user_phone: userPhoneClean, user_name: currentUser.name, method, number, acc_name: name, amount, net_amount: netWithdraw, status: 'pending', created_at: new Date().toISOString() }
       ]);
 
       if(!error) {
         const newMainBal = userMainBal - amount;
         const newWinBal = userWinBal - winBalDeduct;
 
-        await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', String(currentUser.phone).trim());
+        await _supabase.from('users').update({ balance: newMainBal, win_balance: newWinBal }).eq('phone', userPhoneClean);
         currentUser.balance = newMainBal; currentUser.win_balance = newWinBal;
         localStorage.setItem('yeFootballUser', JSON.stringify(currentUser));
         document.getElementById('userBalance').innerText = newMainBal;
@@ -1020,7 +1032,7 @@
       const title = document.getElementById('newsTitleInput').value.trim();
       const content = document.getElementById('newsContentInput').value.trim();
 
-      const { error } = await _supabase.from('announcements').insert([{ title, content }]);
+      const { error } = await _supabase.from('announcements').insert([{ title, content, created_at: new Date().toISOString() }]);
       if(!error) { alert("✅ Announcement Published!"); this.reset(); loadNews(); }
       else alert("Error: " + error.message);
     });
@@ -1097,8 +1109,6 @@
     }
 
     async function loadAdminData() {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-
       const { data: resMatches } = await _supabase.from('matches').select('*').eq('result_status', 'pending');
       const resContainer = document.getElementById('adminMatchResultList');
       resContainer.innerHTML = '';
@@ -1165,8 +1175,8 @@
         });
       }
 
-      const { data: allDeps } = await _supabase.from('deposits').select('user_name, user_phone, amount, status, reason, created_at').gte('created_at', thirtyDaysAgo).order('id', { ascending: false });
-      const { data: allWits } = await _supabase.from('withdrawals').select('user_name, user_phone, amount, status, reason, created_at').gte('created_at', thirtyDaysAgo).order('id', { ascending: false });
+      const { data: allDeps } = await _supabase.from('deposits').select('user_name, user_phone, amount, status, reason, created_at').order('id', { ascending: false }).limit(50);
+      const { data: allWits } = await _supabase.from('withdrawals').select('user_name, user_phone, amount, status, reason, created_at').order('id', { ascending: false }).limit(50);
 
       const adminHistContainer = document.getElementById('adminGlobalHistoryList');
       adminHistContainer.innerHTML = '';
@@ -1176,7 +1186,7 @@
       if(allWits) allWits.forEach(w => globalList.push({ type: '💸 Withdrawal', user: w.user_name, phone: w.user_phone, amount: w.amount, status: w.status, reason: w.reason, date: new Date(w.created_at) }));
 
       if(globalList.length === 0) {
-        adminHistContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No transactions in last 30 days.</p>';
+        adminHistContainer.innerHTML = '<p style="font-size:12px; color:#94a3b8;">No transactions found.</p>';
       } else {
         globalList.sort((a,b) => b.date - a.date).forEach(g => {
           let badgeClass = g.status === 'approved' ? 'badge-approved' : (g.status === 'rejected' ? 'badge-rejected' : 'badge-pending');
